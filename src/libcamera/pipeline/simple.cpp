@@ -85,17 +85,16 @@ public:
 
 	int configure(Camera *camera, CameraConfiguration *config) override;
 
-	int allocateBuffers(Camera *camera,
-			    const std::set<Stream *> &streams) override;
-
-	int freeBuffers(Camera *camera,
-			const std::set<Stream *> &streams) override;
+	int exportFrameBuffers(Camera *camera, Stream *stream,
+			       std::vector<std::unique_ptr<FrameBuffer>> *buffers) override;
+	int importFrameBuffers(Camera *camera, Stream *stream) override;
+	void freeFrameBuffers(Camera *camera, Stream *stream) override;
 
 	int start(Camera *camera) override;
 
 	void stop(Camera *camera) override;
 
-	int queueRequest(Camera *camera, Request *request) override;
+	int queueRequestDevice(Camera *camera, Request *request) override;
 
 	bool match(DeviceEnumerator *enumerator) override;
 
@@ -110,7 +109,7 @@ private:
 
 	int createCamera(MediaEntity *sensor);
 
-	void bufferReady(Buffer *buffer);
+	void bufferReady(FrameBuffer *buffer);
 
 	MediaDevice *media_;
 	V4L2Subdevice *dphy_;
@@ -295,24 +294,28 @@ int PipelineHandlerSimple::configure(Camera *camera, CameraConfiguration *c)
 	return 0;
 }
 
-int PipelineHandlerSimple::allocateBuffers(Camera *camera,
-					   const std::set<Stream *> &streams)
+int PipelineHandlerSimple::exportFrameBuffers(Camera *camera, Stream *stream,
+					      std::vector<std::unique_ptr<FrameBuffer>> *buffers)
 {
-	Stream *stream = *streams.begin();
+	//SimpleCameraData *data = cameraData(camera);
+	unsigned int count = stream->configuration().bufferCount;
 
-	if (stream->memoryType() == InternalMemory)
-		return video_->exportBuffers(&stream->bufferPool());
-	else
-		return video_->importBuffers(&stream->bufferPool());
+	return video_->exportBuffers(count, buffers);
 }
 
-int PipelineHandlerSimple::freeBuffers(Camera *camera,
-				       const std::set<Stream *> &streams)
+int PipelineHandlerSimple::importFrameBuffers(Camera *camera, Stream *stream)
 {
-	if (video_->releaseBuffers())
-		LOG(Simple, Error) << "Failed to release buffers";
+	//SimpleCameraData *data = cameraData(camera);
+	unsigned int count = stream->configuration().bufferCount;
 
-	return 0;
+	return video_->importBuffers(count);
+}
+
+void PipelineHandlerSimple::freeFrameBuffers(Camera *camera, Stream *stream)
+{
+	//SimpleCameraData *data = cameraData(camera);
+
+	video_->releaseBuffers();
 }
 
 int PipelineHandlerSimple::start(Camera *camera)
@@ -341,12 +344,12 @@ void PipelineHandlerSimple::stop(Camera *camera)
 	activeCamera_ = nullptr;
 }
 
-int PipelineHandlerSimple::queueRequest(Camera *camera, Request *request)
+int PipelineHandlerSimple::queueRequestDevice(Camera *camera, Request *request)
 {
 	SimpleCameraData *data = cameraData(camera);
 	Stream *stream = &data->stream_;
 
-	Buffer *buffer = request->findBuffer(stream);
+	FrameBuffer *buffer = request->findBuffer(stream);
 	if (!buffer) {
 		LOG(Simple, Error)
 			<< "Attempt to queue request with invalid stream";
@@ -356,8 +359,6 @@ int PipelineHandlerSimple::queueRequest(Camera *camera, Request *request)
 	int ret = video_->queueBuffer(buffer);
 	if (ret < 0)
 		return ret;
-
-	PipelineHandler::queueRequest(camera, request);
 
 	return 0;
 }
@@ -371,7 +372,7 @@ int PipelineHandlerSimple::createCamera(MediaEntity *sensor)
 	int ret;
 
 	std::unique_ptr<SimpleCameraData> data =
-		utils::make_unique<SimpleCameraData>(this);
+		std::make_unique<SimpleCameraData>(this);
 
 	data->sensor_ = new CameraSensor(sensor);
 	ret = data->sensor_->init();
@@ -443,7 +444,7 @@ bool PipelineHandlerSimple::match(DeviceEnumerator *enumerator)
  * Buffer Handling
  */
 
-void PipelineHandlerSimple::bufferReady(Buffer *buffer)
+void PipelineHandlerSimple::bufferReady(FrameBuffer *buffer)
 {
 	ASSERT(activeCamera_);
 	LOG(Simple, Debug) << "bufferReady";
