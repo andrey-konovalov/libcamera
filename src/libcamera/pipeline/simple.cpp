@@ -376,6 +376,9 @@ int PipelineHandlerSimple::createCamera(MediaEntity *sensor)
 
 	data->sensor_ = new CameraSensor(sensor);
 	ret = data->sensor_->init();
+
+LOG(Simple,Debug) << sensor->name()  << "CameraSensor created";
+
 	if (ret)
 		return ret;
 
@@ -391,24 +394,38 @@ bool PipelineHandlerSimple::match(DeviceEnumerator *enumerator)
 {
 	const MediaPad *pad;
 
-	static const SimplePipelineInfo infos[1] = {
-		{ .driverName = "sun6i-csi",
-		  .phyName = "sun6i-csi",
-		  .v4l2Name = "sun6i-csi",
-		  .v4l2PixFmt = V4L2_PIX_FMT_UYVY,
-		  .mediaBusFmt = MEDIA_BUS_FMT_UYVY8_2X8,
-		  .maxWidth = 1280,
-		  .maxHeight = 720 }
+	static const SimplePipelineInfo infos[] = {
+		{
+			.driverName = "sun6i-csi",
+			.phyName = "sun6i-csi",
+			.v4l2Name = "sun6i-csi",
+			.v4l2PixFmt = V4L2_PIX_FMT_UYVY,
+			.mediaBusFmt = MEDIA_BUS_FMT_UYVY8_2X8,
+			.maxWidth = 1280,
+			.maxHeight = 720,
+		},
+		{
+			.driverName = "unicam",
+			.phyName = "unicam",
+			.v4l2Name = "unicam",
+			.v4l2PixFmt = V4L2_PIX_FMT_SRGGB10P,	/* pRAA */
+			.mediaBusFmt = MEDIA_BUS_FMT_SRGGB10_1X10,
+			.maxWidth = 3280,
+			.maxHeight = 2464,
+		},
 	};
 
-	const SimplePipelineInfo *ptr = infos;
-	for (int i = 0; i < 1; i++, ptr++) {
+	for (unsigned int i = 0; i < ARRAY_SIZE(infos); i++) {
+		const SimplePipelineInfo *ptr = &infos[i];
+
 		DeviceMatch dm(ptr->driverName);
 		dm.add(ptr->phyName);
 
 		media_ = acquireMediaDevice(enumerator, dm);
 		if (!media_)
 			continue;
+
+LOG(Simple,Debug) << ptr->driverName << "acquired";
 
 		PipelineHandlerSimple::pipelineInfo_ = ptr;
 
