@@ -33,23 +33,21 @@ public:
 
 	~RPiCameraData()
 	{
-		bayerBuffers_.destroyBuffers();
 		delete sensor_;
 		delete unicam_;
 		delete isp_;
 	}
 
-	void sensorReady(Buffer *buffer);
-	void ispOutputReady(Buffer *buffer);
-	void ispCaptureReady(Buffer *buffer);
+	void sensorReady(FrameBuffer *buffer);
+	void ispOutputReady(FrameBuffer *buffer);
+	void ispCaptureReady(FrameBuffer *buffer);
 
 	CameraSensor *sensor_;
 	V4L2VideoDevice *unicam_;
 	V4L2M2MDevice *isp_;
 	Stream stream_;
 
-	BufferPool bayerBuffers_;
-	std::vector<std::unique_ptr<Buffer>> rawBuffers_;
+	std::vector<std::unique_ptr<FrameBuffer>> rawBuffers_;
 };
 
 class RPiCameraConfiguration : public CameraConfiguration
@@ -72,15 +70,15 @@ public:
 	int configure(Camera *camera,
 		      CameraConfiguration *config) override;
 
-	int allocateBuffers(Camera *camera,
-			    const std::set<Stream *> &streams) override;
-	int freeBuffers(Camera *camera,
-			const std::set<Stream *> &streams) override;
+	int exportFrameBuffers(Camera *camera, Stream *stream,
+			       std::vector<std::unique_ptr<FrameBuffer>> *buffers) override;
+	int importFrameBuffers(Camera *camera, Stream *stream) override;
+	void freeFrameBuffers(Camera *camera, Stream *stream) override;
 
 	int start(Camera *camera) override;
 	void stop(Camera *camera) override;
 
-	int queueRequest(Camera *camera, Request *request) override;
+	int queueRequestDevice(Camera *camera, Request *request) override;
 
 	bool match(DeviceEnumerator *enumerator) override;
 
