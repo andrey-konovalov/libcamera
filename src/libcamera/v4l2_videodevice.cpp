@@ -378,7 +378,8 @@ bool V4L2BufferCache::Entry::operator==(const FrameBuffer &buffer)
 const std::string V4L2DeviceFormat::toString() const
 {
 	std::stringstream ss;
-	ss << size.toString() << "-" << utils::hex(fourcc);
+	ss << size.toString() << "-" << utils::hex(fourcc) <<
+		"(" << planesCount << " planes)";
 	return ss.str();
 }
 
@@ -1221,6 +1222,10 @@ int V4L2VideoDevice::queueBuffer(FrameBuffer *buffer)
 			for (const FrameMetadata::Plane &plane : metadata.planes) {
 				v4l2Planes[nplane].bytesused = plane.bytesused;
 				v4l2Planes[nplane].length = buffer->planes()[nplane].length;
+
+				LOG(V4L2, Debug) << "plane " << nplane << ":" <<
+					" bytesused=" << v4l2Planes[nplane].bytesused <<
+					" length=" << v4l2Planes[nplane].length;
 				nplane++;
 			}
 		} else {
@@ -1232,9 +1237,22 @@ int V4L2VideoDevice::queueBuffer(FrameBuffer *buffer)
 		buf.timestamp.tv_sec = metadata.timestamp / 1000000000;
 		buf.timestamp.tv_usec = (metadata.timestamp / 1000) % 1000000;
 	}
-
+#if 0
 	LOG(V4L2, Debug) << "Queueing buffer " << buf.index;
-
+#else
+	if (multiPlanar) {
+		LOG(V4L2, Debug) <<
+			"Queueing MULIPLANAR buffer index=" << buf.index << 
+			" type=" << buf.type << " memory=" << buf.memory <<
+			" buf has " << buf.length << " planes" <<
+			" plane[0].length=" << buf.m.planes[0].length <<
+			" plane[0].bytesused=" << buf.m.planes[0].bytesused;
+	} else {
+		LOG(V4L2, Debug) << "Queueing buffer index=" << buf.index <<
+			" type=" << buf.type << " memory=" << buf.memory <<
+			" bytesused=" << buf.bytesused;
+	}
+#endif
 	ret = ioctl(VIDIOC_QBUF, &buf);
 	if (ret < 0) {
 		LOG(V4L2, Error)
