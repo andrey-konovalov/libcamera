@@ -99,7 +99,7 @@ protected:
 			return TestFail;
 		}
 
-		/* utils::split() test. */
+		/* utils::join() and utils::split() test. */
 		std::vector<std::string> elements = {
 			"/bin",
 			"/usr/bin",
@@ -110,6 +110,11 @@ protected:
 		std::string path;
 		for (const auto &element : elements)
 			path += (path.empty() ? "" : ":") + element;
+
+		if (path != utils::join(elements, ":")) {
+			cerr << "utils::join() test failed" << endl;
+			return TestFail;
+		}
 
 		std::vector<std::string> dirs;
 
