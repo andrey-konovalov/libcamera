@@ -239,6 +239,9 @@ int SimpleCameraData::init()
 	for (unsigned int code : sensor_->mbusCodes()) {
 		V4L2SubdeviceFormat format{ code, sensor_->resolution() };
 
+		LOG(SimplePipeline, Debug)
+			<< "AAA: sensor fmt = " << format.toString();
+
 		/*
 		 * Setup links first as some subdev drivers take active links
 		 * into account to propaget TRY formats. So is life :-(
@@ -350,16 +353,32 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 	if (ret < 0)
 		return ret;
 
+	LOG(SimplePipeline, Debug)
+		<< "X---: sensor_->setFormat: " << format->toString();
+
 	for (const Entity &e : entities_) {
 		MediaLink *link = e.link;
 		MediaPad *source = link->source();
 		MediaPad *sink = link->sink();
+
+		LOG(SimplePipeline, Debug)
+			<< "X000: entity/source/sink: " << e.entity->name()
+			<< "/" << source->entity()->name()
+			<< "/" << sink->entity()->name();
 
 		if (source->entity() != sensor_->entity()) {
 			V4L2Subdevice *subdev = pipe->subdev(source->entity());
 			ret = subdev->getFormat(source->index(), format, whence);
 			if (ret < 0)
 				return ret;
+
+			LOG(SimplePipeline, Debug)
+				<< "X111: getFormat: " << subdev->deviceNode()
+				<< ", " << source->entity()->name()
+				<< "[" << source->index() << "], "
+				<< (whence == V4L2Subdevice::TryFormat ?
+					"/ TryFormat" : "/ ActiveFormat")
+				<< " : " << format->toString();
 		}
 
 		if (sink->entity()->function() != MEDIA_ENT_F_IO_V4L) {
@@ -367,6 +386,14 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 			ret = subdev->setFormat(sink->index(), format, whence);
 			if (ret < 0)
 				return ret;
+
+			LOG(SimplePipeline, Debug)
+				<< "X222: setFormat: " << subdev->deviceNode()
+				<< ", " << sink->entity()->name()
+				<< "[" << sink->index() << "], "
+				<< (whence == V4L2Subdevice::TryFormat ?
+					"/ TryFormat" : "/ ActiveFormat")
+				<< " : " << format->toString();
 		}
 
 		LOG(SimplePipeline, Debug)
@@ -688,6 +715,17 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 		default:
 			break;
 		}
+	}
+
+	LOG(SimplePipeline, Debug) << "video capture nodes found:";
+	for (MediaEntity *entity : videos) {
+		LOG(SimplePipeline, Debug) << "\t\t"
+			<< entity->name() << "(" << entity->deviceNode() << ")";
+	}
+	LOG(SimplePipeline, Debug) << "Sensors found:";
+	for (MediaEntity *entity : sensors) {
+		LOG(SimplePipeline, Debug) << "\t\t"
+			<< entity->name() << "(" << entity->deviceNode() << ")";
 	}
 
 	if (sensors.empty()) {

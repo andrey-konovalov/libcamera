@@ -94,6 +94,9 @@ void DeviceMatch::add(const std::string &entity)
  */
 bool DeviceMatch::match(const MediaDevice *device) const
 {
+	LOG(DeviceEnumerator, Debug)
+		<< "YYY: " << driver_ << " vs " << device->driver();
+
 	if (driver_ != device->driver())
 		return false;
 
