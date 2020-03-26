@@ -1688,6 +1688,14 @@ PixelFormat V4L2VideoDevice::toPixelFormat(V4L2PixelFormat v4l2Fourcc)
 		return PixelFormat(DRM_FORMAT_MJPEG);
 
 	/* V4L2 formats not yet supported by DRM. */
+	case V4L2_PIX_FMT_SRGGB10P:
+		libcamera::_log(__FILE__, __LINE__, _LOG_CATEGORY(V4L2)(),
+				LogWarning).stream()
+			<< "Unsupported V4L2 pixel format "
+			<< v4l2Fourcc.toString()
+			<< " >>> GOING FORWARD <<<";
+		return PixelFormat(V4L2_PIX_FMT_SRGGB10P);
+
 	default:
 		/*
 		 * \todo We can't use LOG() in a static method of a Loggable
@@ -1774,6 +1782,14 @@ V4L2PixelFormat V4L2VideoDevice::toV4L2PixelFormat(const PixelFormat &pixelForma
 	/* Compressed formats. */
 	case DRM_FORMAT_MJPEG:
 		return V4L2PixelFormat(V4L2_PIX_FMT_MJPEG);
+
+	case V4L2_PIX_FMT_SRGGB10P:
+		libcamera::_log(__FILE__, __LINE__, _LOG_CATEGORY(V4L2)(),
+				LogWarning).stream()
+			<< "Unsupported V4L2 pixel format "
+			<< pixelFormat.toString()
+			<< " >>> GOING FORWARD <<<";
+		return V4L2PixelFormat(V4L2_PIX_FMT_SRGGB10P);
 	}
 
 	/*
