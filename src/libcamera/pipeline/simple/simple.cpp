@@ -644,6 +644,7 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 	static const SimplePipelineInfo infos[] = {
 		{ "imx7-csi", "pxp" },
 		{ "sun6i-csi", nullptr },
+		{ "qcom-camss", nullptr },
 	};
 
 	MediaDevice *converter = nullptr;
