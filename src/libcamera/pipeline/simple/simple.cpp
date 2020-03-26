@@ -696,10 +696,12 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 	}
 
 	if (videos.size() != 1) {
-		LOG(SimplePipeline, Error)
+		LOG(SimplePipeline, Warning)
 			<< "Pipeline with " << videos.size()
 			<< " video capture nodes is not supported";
+#if 0
 		return false;
+#endif
 	}
 
 	/* Locate and open the capture video node. */
@@ -708,9 +710,11 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 		return false;
 
 	if (video_->caps().isMultiplanar()) {
-		LOG(SimplePipeline, Error)
+		LOG(SimplePipeline, Warning)
 			<< "V4L2 multiplanar devices are not supported";
+#if 0
 		return false;
+#endif
 	}
 
 	video_->bufferReady.connect(this, &SimplePipelineHandler::bufferReady);
