@@ -1786,6 +1786,36 @@ PixelFormat V4L2VideoDevice::toPixelFormat(V4L2PixelFormat v4l2Fourcc)
 	case V4L2_PIX_FMT_MJPEG:
 		return PixelFormat(DRM_FORMAT_MJPEG);
 
+	/* 8-bit Bayer formats. */
+	case V4L2_PIX_FMT_SRGGB8:
+		return PixelFormat(DRM_FORMAT_SRGGB8);
+	case V4L2_PIX_FMT_SGRBG8:
+		return PixelFormat(DRM_FORMAT_SGRBG8);
+	case V4L2_PIX_FMT_SGBRG8:
+		return PixelFormat(DRM_FORMAT_SGBRG8);
+	case V4L2_PIX_FMT_SBGGR8:
+		return PixelFormat(DRM_FORMAT_SBGGR8);
+
+	/* 10-bit Bayer formats. */
+	case V4L2_PIX_FMT_SRGGB10:
+		return PixelFormat(DRM_FORMAT_SRGGB10);
+	case V4L2_PIX_FMT_SGRBG10:
+		return PixelFormat(DRM_FORMAT_SGRBG10);
+	case V4L2_PIX_FMT_SGBRG10:
+		return PixelFormat(DRM_FORMAT_SGBRG10);
+	case V4L2_PIX_FMT_SBGGR10:
+		return PixelFormat(DRM_FORMAT_SBGGR10);
+
+	/* 10-bit Bayer packed formats. */
+	case V4L2_PIX_FMT_SRGGB10P:
+		return PixelFormat(DRM_FORMAT_SRGGB10, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SGRBG10P:
+		return PixelFormat(DRM_FORMAT_SGRBG10, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SGBRG10P:
+		return PixelFormat(DRM_FORMAT_SGBRG10, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SBGGR10P:
+		return PixelFormat(DRM_FORMAT_SBGGR10, MIPI_FORMAT_MOD_CSI2_PACKED);
+
 	/* V4L2 formats not yet supported by DRM. */
 	default:
 		/*
@@ -1832,6 +1862,8 @@ V4L2PixelFormat V4L2VideoDevice::toV4L2PixelFormat(const PixelFormat &pixelForma
 V4L2PixelFormat V4L2VideoDevice::toV4L2PixelFormat(const PixelFormat &pixelFormat,
 						   bool multiplanar)
 {
+	bool csi2Packed = pixelFormat.modifier() == MIPI_FORMAT_MOD_CSI2_PACKED;
+
 	switch (pixelFormat) {
 	/* RGB formats. */
 	case DRM_FORMAT_BGR888:
@@ -1879,6 +1911,30 @@ V4L2PixelFormat V4L2VideoDevice::toV4L2PixelFormat(const PixelFormat &pixelForma
 	/* Compressed formats. */
 	case DRM_FORMAT_MJPEG:
 		return V4L2PixelFormat(V4L2_PIX_FMT_MJPEG);
+
+	/* 8-bit Bayer formats. */
+	case DRM_FORMAT_SRGGB8:
+		return V4L2PixelFormat(V4L2_PIX_FMT_SRGGB8);
+	case DRM_FORMAT_SGRBG8:
+		return V4L2PixelFormat(V4L2_PIX_FMT_SGRBG8);
+	case DRM_FORMAT_SGBRG8:
+		return V4L2PixelFormat(V4L2_PIX_FMT_SGBRG8);
+	case DRM_FORMAT_SBGGR8:
+		return V4L2PixelFormat(V4L2_PIX_FMT_SBGGR8);
+
+	/* 10-bit Bayer formats, the packed ones included. */
+	case DRM_FORMAT_SRGGB10:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SRGGB10P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SRGGB10);
+	case DRM_FORMAT_SGRBG10:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SGRBG10P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SGRBG10);
+	case DRM_FORMAT_SGBRG10:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SGBRG10P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SGBRG10);
+	case DRM_FORMAT_SBGGR10:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SBGGR10P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SBGGR10);
 	}
 
 	/*
