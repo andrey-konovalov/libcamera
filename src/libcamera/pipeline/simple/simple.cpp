@@ -842,9 +842,11 @@ V4L2VideoDevice *SimplePipelineHandler::video(const MediaEntity *entity)
 		return nullptr;
 
 	if (video->caps().isMultiplanar()) {
-		LOG(SimplePipeline, Error)
+		LOG(SimplePipeline, Warning)
 			<< "V4L2 multiplanar devices are not supported";
+#if 0
 		return nullptr;
+#endif
 	}
 
 	video->bufferReady.connect(this, &SimplePipelineHandler::bufferReady);
