@@ -380,6 +380,7 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 		MediaLink *link = e.link;
 		MediaPad *source = link->source();
 		MediaPad *sink = link->sink();
+		V4L2SubdeviceFormat source_format;
 
 		if (source->entity() != sensor_->entity()) {
 			V4L2Subdevice *subdev = pipe->subdev(source->entity());
@@ -388,11 +389,22 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 				return ret;
 		}
 
+		source_format = *format;
 		if (sink->entity()->function() != MEDIA_ENT_F_IO_V4L) {
 			V4L2Subdevice *subdev = pipe->subdev(sink->entity());
 			ret = subdev->setFormat(sink->index(), format, whence);
 			if (ret < 0)
 				return ret;
+
+			if (format->mbus_code != source_format.mbus_code
+			    || format->size != source_format.size) {
+				LOG(SimplePipeline, Debug)
+					<< "Source pad format isn't supported "
+					<< "by the sink pad of the link: "
+					<< "Source: " << source_format.toString()
+					<< "Sink: " << format->toString();
+				return -EINVAL;
+			}
 		}
 
 		LOG(SimplePipeline, Debug)
