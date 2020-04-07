@@ -256,6 +256,9 @@ int SimpleCameraData::init()
 	for (unsigned int code : sensor_->mbusCodes()) {
 		V4L2SubdeviceFormat format{ code, sensor_->resolution() };
 
+		LOG(SimplePipeline, Debug)
+			<< "AAA: sensor fmt = " << format.toString();
+
 		/*
 		 * Setup links first as some subdev drivers take active links
 		 * into account to propagate TRY formats. Such is life :-(
@@ -369,17 +372,33 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 	if (ret < 0)
 		return ret;
 
+	LOG(SimplePipeline, Debug)
+		<< "X---: sensor_->setFormat: " << format->toString();
+
 	for (const Entity &e : entities_) {
 		MediaLink *link = e.link;
 		MediaPad *source = link->source();
 		MediaPad *sink = link->sink();
 		V4L2SubdeviceFormat source_format;
 
+		LOG(SimplePipeline, Debug)
+			<< "X000: entity/source/sink: " << e.entity->name()
+			<< "/" << source->entity()->name()
+			<< "/" << sink->entity()->name();
+
 		if (source->entity() != sensor_->entity()) {
 			V4L2Subdevice *subdev = pipe->subdev(source->entity());
 			ret = subdev->getFormat(source->index(), format, whence);
 			if (ret < 0)
 				return ret;
+
+			LOG(SimplePipeline, Debug)
+				<< "X111: getFormat: " << subdev->deviceNode()
+				<< ", " << source->entity()->name()
+				<< "[" << source->index() << "], "
+				<< (whence == V4L2Subdevice::TryFormat ?
+					"/ TryFormat" : "/ ActiveFormat")
+				<< " : " << format->toString();
 		}
 
 		source_format = *format;
@@ -388,6 +407,14 @@ int SimpleCameraData::setupFormats(V4L2SubdeviceFormat *format,
 			ret = subdev->setFormat(sink->index(), format, whence);
 			if (ret < 0)
 				return ret;
+
+			LOG(SimplePipeline, Debug)
+				<< "X222: setFormat: " << subdev->deviceNode()
+				<< ", " << sink->entity()->name()
+				<< "[" << sink->index() << "], "
+				<< (whence == V4L2Subdevice::TryFormat ?
+					"/ TryFormat" : "/ ActiveFormat")
+				<< " : " << format->toString();
 
 			if (format->mbus_code != source_format.mbus_code
 			    || format->size != source_format.size) {
@@ -710,6 +737,12 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 		}
 	}
 
+	LOG(SimplePipeline, Debug) << "Sensors found:";
+	for (MediaEntity *entity : sensors) {
+		LOG(SimplePipeline, Debug) << "\t\t"
+			<< entity->name() << "(" << entity->deviceNode() << ")";
+	}
+
 	if (sensors.empty()) {
 		LOG(SimplePipeline, Error) << "No sensor found";
 		return false;
@@ -794,6 +827,10 @@ V4L2VideoDevice *SimplePipelineHandler::video(const MediaEntity *entity)
 	 * by constructing a new one.
 	 */
 
+	LOG(SimplePipeline, Debug)
+		<< "MMM: trying to get V4L2VideoDevice from entity \""
+		<< entity->name() << "\"";
+
 	auto iter = videos_.find(entity);
 	if (iter != videos_.end())
 		return iter->second.get();
@@ -812,6 +849,10 @@ V4L2VideoDevice *SimplePipelineHandler::video(const MediaEntity *entity)
 	}
 
 	video->bufferReady.connect(this, &SimplePipelineHandler::bufferReady);
+
+	LOG(SimplePipeline, Debug)
+		<< "NNN: adding new V4L2VideoDevice \"" << video->deviceName()
+		<< "\" to entity \"" << entity->name() << "\"";
 
 	auto element = videos_.emplace(entity, std::move(video));
 	return element.first->second.get();
