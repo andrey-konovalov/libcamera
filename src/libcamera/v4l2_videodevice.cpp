@@ -1816,6 +1816,26 @@ PixelFormat V4L2VideoDevice::toPixelFormat(V4L2PixelFormat v4l2Fourcc)
 	case V4L2_PIX_FMT_SBGGR10P:
 		return PixelFormat(DRM_FORMAT_SBGGR10, MIPI_FORMAT_MOD_CSI2_PACKED);
 
+	/* 12-bit Bayer formats. */
+	case V4L2_PIX_FMT_SRGGB12:
+		return PixelFormat(DRM_FORMAT_SRGGB12);
+	case V4L2_PIX_FMT_SGRBG12:
+		return PixelFormat(DRM_FORMAT_SGRBG12);
+	case V4L2_PIX_FMT_SGBRG12:
+		return PixelFormat(DRM_FORMAT_SGBRG12);
+	case V4L2_PIX_FMT_SBGGR12:
+		return PixelFormat(DRM_FORMAT_SBGGR12);
+
+	/* 12-bit Bayer packed formats. */
+	case V4L2_PIX_FMT_SRGGB12P:
+		return PixelFormat(DRM_FORMAT_SRGGB12, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SGRBG12P:
+		return PixelFormat(DRM_FORMAT_SGRBG12, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SGBRG12P:
+		return PixelFormat(DRM_FORMAT_SGBRG12, MIPI_FORMAT_MOD_CSI2_PACKED);
+	case V4L2_PIX_FMT_SBGGR12P:
+		return PixelFormat(DRM_FORMAT_SBGGR12, MIPI_FORMAT_MOD_CSI2_PACKED);
+
 	/* V4L2 formats not yet supported by DRM. */
 	default:
 		/*
@@ -1935,6 +1955,20 @@ V4L2PixelFormat V4L2VideoDevice::toV4L2PixelFormat(const PixelFormat &pixelForma
 	case DRM_FORMAT_SBGGR10:
 		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SBGGR10P)
 			: V4L2PixelFormat(V4L2_PIX_FMT_SBGGR10);
+
+	/* 12-bit Bayer formats, the packed ones included. */
+	case DRM_FORMAT_SRGGB12:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SRGGB12P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SRGGB12);
+	case DRM_FORMAT_SGRBG12:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SGRBG12P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SGRBG12);
+	case DRM_FORMAT_SGBRG12:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SGBRG12P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SGBRG12);
+	case DRM_FORMAT_SBGGR12:
+		return (csi2Packed) ? V4L2PixelFormat(V4L2_PIX_FMT_SBGGR12P)
+			: V4L2PixelFormat(V4L2_PIX_FMT_SBGGR12);
 	}
 
 	/*
