@@ -108,8 +108,8 @@ bool PixelFormat::operator<(const PixelFormat &other) const
  */
 std::string PixelFormat::toString() const
 {
-	char str[11];
-	snprintf(str, 11, "0x%08x", fourcc_);
+	char str[30];
+	snprintf(str, 30, "0x%08x:0x%016lx", fourcc_, modifier_);
 	return str;
 }
 
