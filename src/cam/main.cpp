@@ -162,7 +162,12 @@ int CamApp::parseOptions(int argc, char *argv[])
 				 ArgumentRequired);
 	streamKeyValue.addOption("height", OptionInteger, "Height in pixels",
 				 ArgumentRequired);
-	streamKeyValue.addOption("pixelformat", OptionInteger, "Pixel format",
+	streamKeyValue.addOption("pixelformat", OptionString,
+				 "Pixel format\n"
+				 "E.g. for 'RG12' MIPI packed (corresponds to RGGB12P) use:\n"
+				 "pixelformat=0x32314752:0x0a00000000000001\n"
+				 "If there is no modifier, use:\n"
+				 "pixelformat=0x32314752",
 				 ArgumentRequired);
 
 	OptionsParser parser;
@@ -259,8 +264,36 @@ int CamApp::prepareConfig()
 				cfg.size.height = opt["height"];
 
 			/* TODO: Translate 4CC string to ID. */
-			if (opt.isSet("pixelformat"))
-				cfg.pixelFormat = PixelFormat(opt["pixelformat"]);
+			if (opt.isSet("pixelformat")) {
+				char *endptr;
+				const char *sptr;
+				unsigned long modifier = 0;
+				unsigned long pix_fmt;
+				const std::string &pixfmtstr = opt["pixelformat"];
+
+				pix_fmt = strtoul(pixfmtstr.c_str(), &endptr, 0);
+				if (pix_fmt == 0) {
+					std::cerr << "Incorrect pixelformat ("
+						<< pixfmtstr << ")" << std::endl;
+				} else if (*endptr != '\0') {
+					sptr = endptr + 1;
+					const std::string modstr(sptr);
+					if (*endptr == ':' && *sptr != '\0') {
+						modifier = strtoul(sptr, &endptr, 0);
+						if (*endptr != '\0') {
+							std::cerr << "Incorrect pixelformat modifier ("
+								<< pixfmtstr << ")"
+								<< std::endl;
+							modifier = 0;
+						}
+					} else {
+						std::cerr << "Incorrect pixelformat modifier ("
+							<< pixfmtstr << ")"
+							<< std::endl;
+					}
+				}
+				cfg.pixelFormat = PixelFormat(pix_fmt, modifier);
+			}
 		}
 	}
 
