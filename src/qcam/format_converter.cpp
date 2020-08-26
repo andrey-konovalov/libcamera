@@ -136,6 +136,11 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 		formatFamily_ = MJPEG;
 		break;
 
+	/* TBD: add more raw packed formats */
+	case libcamera::formats::SRGGB12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		break;
+
 	default:
 		return -EINVAL;
 	};
@@ -163,7 +168,50 @@ void FormatConverter::convert(const unsigned char *src, size_t size,
 	case NV:
 		convertNV(src, dst->bits());
 		break;
+	case RAW_CSI2P:
+		convertRAW_CSI2P(src, dst->bits());
+		break;
 	};
+}
+
+/*
+ * The pixels are processed in groups of 4 (2 by 2 squares), and the
+ * assumption is that height_ and width_ are even numbers.
+ */
+void FormatConverter::convertRAW_CSI2P(const unsigned char *src,
+				       unsigned char *dst)
+{
+	unsigned int s_inc = 3; // RAW12P: 12 bpp == 3 bytes per 2 pixels
+	unsigned char r, g1, g2, b;
+	unsigned int s_linelen = width_ * s_inc /  2;
+
+	for (unsigned int y = 0; y < height_; y += 2) {
+		for (unsigned x =0; x < width_; x += 2) {
+			// read the color values for the current 2x2 group:
+			r = src[0];
+			g1 = src[1];
+			g2 = src[s_linelen];
+			b = src[1 + s_linelen];
+			src += s_inc;
+			// two left pixels of the four:
+			dst[0] = dst[0 + 4 * width_] = b;
+			dst[1] = g1;
+			dst[1 + 4 * width_] = g2;
+			dst[2] = dst[2 + 4 * width_] = r;
+			dst[3] = dst[3 + 4 * width_] = 0xff;
+			dst += 4;
+			// two right pixels of the four:
+			dst[0] = dst[0 + 4 * width_] = b;
+			dst[1] = g1;
+			dst[1 + 4 * width_] = g2;
+			dst[2] = dst[2 + 4 * width_] = r;
+			dst[3] = dst[3 + 4 * width_] = 0xff;
+			dst += 4;
+		}
+		// move to the next even line:
+		src += s_linelen;
+		dst += 4 * width_;
+	}
 }
 
 static void yuv_to_rgb(int y, int u, int v, int *r, int *g, int *b)

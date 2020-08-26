@@ -26,11 +26,13 @@ private:
 	enum FormatFamily {
 		MJPEG,
 		NV,
+		RAW_CSI2P,
 		RGB,
 		YUV,
 	};
 
 	void convertNV(const unsigned char *src, unsigned char *dst);
+	void convertRAW_CSI2P(const unsigned char *src, unsigned char *dst);
 	void convertRGB(const unsigned char *src, unsigned char *dst);
 	void convertYUV(const unsigned char *src, unsigned char *dst);
 
@@ -44,6 +46,9 @@ private:
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
 	bool nvSwap_;
+
+	/* RAW Bayer CSI2P parameters */
+	/* TBD */
 
 	/* RGB parameters */
 	unsigned int bpp_;
