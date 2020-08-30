@@ -139,6 +139,22 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 	/* TBD: add more raw packed formats */
 	case libcamera::formats::SRGGB12_CSI2P:
 		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 0;
+		break;
+
+	case libcamera::formats::SGRBG12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 1;
+		break;
+
+	case libcamera::formats::SGBRG12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 2;
+		break;
+
+	case libcamera::formats::SBGGR12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 3;
 		break;
 
 	default:
@@ -181,17 +197,33 @@ void FormatConverter::convert(const unsigned char *src, size_t size,
 void FormatConverter::convertRAW_CSI2P(const unsigned char *src,
 				       unsigned char *dst)
 {
-	unsigned int s_inc = 3; // RAW12P: 12 bpp == 3 bytes per 2 pixels
+	unsigned int r_pos, b_pos, g1_pos, g2_pos;
 	unsigned char r, g1, g2, b;
-	unsigned int s_linelen = width_ * s_inc /  2;
+	unsigned int s_inc = 3; // RAW12P: bpp = 3/2 = 3 bytes per 2 pixels
+	unsigned int s_linelen = width_ * s_inc /  2; // width * bpp
+
+	/*
+	 * Calculate the offsets of the colour values in the src buffer.
+	 * g1 is green value from the even (upper) line, g2 is the green
+	 * value from the odd (lower) line.
+	 */
+	if ( r_pos_ > 1) {
+		r_pos = r_pos_ - 2 + s_linelen;
+		b_pos = 3 - r_pos_;
+	} else {
+		r_pos = r_pos_;
+		b_pos = 1 - r_pos_ + s_linelen;
+	}
+	g1_pos = (r_pos == 0 || b_pos == 0) ? 1 : 0;
+	g2_pos = 1 - g1_pos + s_linelen;
 
 	for (unsigned int y = 0; y < height_; y += 2) {
 		for (unsigned x =0; x < width_; x += 2) {
 			// read the color values for the current 2x2 group:
-			r = src[0];
-			g1 = src[1];
-			g2 = src[s_linelen];
-			b = src[1 + s_linelen];
+			r = src[r_pos];
+			g1 = src[g1_pos];
+			g2 = src[g2_pos];
+			b = src[b_pos];
 			src += s_inc;
 			// two left pixels of the four:
 			dst[0] = dst[0 + 4 * width_] = b;
