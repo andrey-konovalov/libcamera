@@ -137,24 +137,60 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 		break;
 
 	/* TBD: add more raw packed formats */
+	case libcamera::formats::SRGGB10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 0;
+		bpp_numer_ = 4;
+		bpp_denom_ = 5;
+		break;
+
+	case libcamera::formats::SGRBG10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 1;
+		bpp_numer_ = 4;
+		bpp_denom_ = 5;
+		break;
+
+	case libcamera::formats::SGBRG10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 2;
+		bpp_numer_ = 4;
+		bpp_denom_ = 5;
+		break;
+
+	case libcamera::formats::SBGGR10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		r_pos_ = 3;
+		bpp_numer_ = 4;
+		bpp_denom_ = 5;
+		break;
+
 	case libcamera::formats::SRGGB12_CSI2P:
 		formatFamily_ = RAW_CSI2P;
 		r_pos_ = 0;
+		bpp_numer_ = 2;
+		bpp_denom_ = 3;
 		break;
 
 	case libcamera::formats::SGRBG12_CSI2P:
 		formatFamily_ = RAW_CSI2P;
 		r_pos_ = 1;
+		bpp_numer_ = 2;
+		bpp_denom_ = 3;
 		break;
 
 	case libcamera::formats::SGBRG12_CSI2P:
 		formatFamily_ = RAW_CSI2P;
 		r_pos_ = 2;
+		bpp_numer_ = 2;
+		bpp_denom_ = 3;
 		break;
 
 	case libcamera::formats::SBGGR12_CSI2P:
 		formatFamily_ = RAW_CSI2P;
 		r_pos_ = 3;
+		bpp_numer_ = 2;
+		bpp_denom_ = 3;
 		break;
 
 	default:
@@ -199,8 +235,8 @@ void FormatConverter::convertRAW_CSI2P(const unsigned char *src,
 {
 	unsigned int r_pos, b_pos, g1_pos, g2_pos;
 	unsigned char r, g1, g2, b;
-	unsigned int s_inc = 3; // RAW12P: bpp = 3/2 = 3 bytes per 2 pixels
-	unsigned int s_linelen = width_ * s_inc /  2; // width * bpp
+	unsigned int s_linelen = width_ * bpp_denom_ / bpp_numer_;
+	unsigned int d_linelen = width_ * 4;
 
 	/*
 	 * Calculate the offsets of the colour values in the src buffer.
@@ -218,31 +254,34 @@ void FormatConverter::convertRAW_CSI2P(const unsigned char *src,
 	g2_pos = 1 - g1_pos + s_linelen;
 
 	for (unsigned int y = 0; y < height_; y += 2) {
-		for (unsigned x =0; x < width_; x += 2) {
-			// read the color values for the current 2x2 group:
-			r = src[r_pos];
-			g1 = src[g1_pos];
-			g2 = src[g2_pos];
-			b = src[b_pos];
-			src += s_inc;
-			// two left pixels of the four:
-			dst[0] = dst[0 + 4 * width_] = b;
-			dst[1] = g1;
-			dst[1 + 4 * width_] = g2;
-			dst[2] = dst[2 + 4 * width_] = r;
-			dst[3] = dst[3 + 4 * width_] = 0xff;
-			dst += 4;
-			// two right pixels of the four:
-			dst[0] = dst[0 + 4 * width_] = b;
-			dst[1] = g1;
-			dst[1 + 4 * width_] = g2;
-			dst[2] = dst[2 + 4 * width_] = r;
-			dst[3] = dst[3 + 4 * width_] = 0xff;
-			dst += 4;
+		for (unsigned x = 0; x < width_; x += bpp_numer_) {
+			for (unsigned int i = 0; i < bpp_numer_ ; i += 2) {
+				// read the colours for the current 2x2 group:
+				r = src[r_pos];
+				g1 = src[g1_pos];
+				g2 = src[g2_pos];
+				b = src[b_pos];
+				src += 2;
+				// two left pixels of the four:
+				dst[0] = dst[0 + d_linelen] = b;
+				dst[1] = g1;
+				dst[1 + d_linelen] = g2;
+				dst[2] = dst[2 + d_linelen] = r;
+				dst[3] = dst[3 + d_linelen] = 0xff;
+				dst += 4;
+				// two right pixels of the four:
+				dst[0] = dst[0 + d_linelen] = b;
+				dst[1] = g1;
+					dst[1 + d_linelen] = g2;
+				dst[2] = dst[2 + d_linelen] = r;
+				dst[3] = dst[3 + d_linelen] = 0xff;
+				dst += 4;
+			}
+			src += bpp_denom_ - bpp_numer_;
 		}
 		// move to the next even line:
 		src += s_linelen;
-		dst += 4 * width_;
+		dst += d_linelen;
 	}
 }
 

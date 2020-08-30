@@ -48,7 +48,9 @@ private:
 	bool nvSwap_;
 
 	/* RAW Bayer CSI2P parameters */
-	/* TBD */
+	/* unsigned int r_pos_ from RGB parameters is reused */
+	unsigned int bpp_numer_;
+	unsigned int bpp_denom_;
 
 	/* RGB parameters */
 	unsigned int bpp_;
