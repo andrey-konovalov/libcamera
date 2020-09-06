@@ -33,103 +33,103 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 	switch (format) {
 	case libcamera::formats::NV12:
 		formatFamily_ = NV;
-		horzSubSample_ = 2;
-		vertSubSample_ = 2;
-		nvSwap_ = false;
+		params_.nv.horzSubSample = 2;
+		params_.nv.vertSubSample = 2;
+		params_.nv.nvSwap = false;
 		break;
 	case libcamera::formats::NV21:
 		formatFamily_ = NV;
-		horzSubSample_ = 2;
-		vertSubSample_ = 2;
-		nvSwap_ = true;
+		params_.nv.horzSubSample = 2;
+		params_.nv.vertSubSample = 2;
+		params_.nv.nvSwap = true;
 		break;
 	case libcamera::formats::NV16:
 		formatFamily_ = NV;
-		horzSubSample_ = 2;
-		vertSubSample_ = 1;
-		nvSwap_ = false;
+		params_.nv.horzSubSample = 2;
+		params_.nv.vertSubSample = 1;
+		params_.nv.nvSwap = false;
 		break;
 	case libcamera::formats::NV61:
 		formatFamily_ = NV;
-		horzSubSample_ = 2;
-		vertSubSample_ = 1;
-		nvSwap_ = true;
+		params_.nv.horzSubSample = 2;
+		params_.nv.vertSubSample = 1;
+		params_.nv.nvSwap = true;
 		break;
 	case libcamera::formats::NV24:
 		formatFamily_ = NV;
-		horzSubSample_ = 1;
-		vertSubSample_ = 1;
-		nvSwap_ = false;
+		params_.nv.horzSubSample = 1;
+		params_.nv.vertSubSample = 1;
+		params_.nv.nvSwap = false;
 		break;
 	case libcamera::formats::NV42:
 		formatFamily_ = NV;
-		horzSubSample_ = 1;
-		vertSubSample_ = 1;
-		nvSwap_ = true;
+		params_.nv.horzSubSample = 1;
+		params_.nv.vertSubSample = 1;
+		params_.nv.nvSwap = true;
 		break;
 
 	case libcamera::formats::RGB888:
 		formatFamily_ = RGB;
-		r_pos_ = 2;
-		g_pos_ = 1;
-		b_pos_ = 0;
-		bpp_ = 3;
+		params_.rgb.r_pos = 2;
+		params_.rgb.g_pos = 1;
+		params_.rgb.b_pos = 0;
+		params_.rgb.bpp = 3;
 		break;
 	case libcamera::formats::BGR888:
 		formatFamily_ = RGB;
-		r_pos_ = 0;
-		g_pos_ = 1;
-		b_pos_ = 2;
-		bpp_ = 3;
+		params_.rgb.r_pos = 0;
+		params_.rgb.g_pos = 1;
+		params_.rgb.b_pos = 2;
+		params_.rgb.bpp = 3;
 		break;
 	case libcamera::formats::ARGB8888:
 		formatFamily_ = RGB;
-		r_pos_ = 2;
-		g_pos_ = 1;
-		b_pos_ = 0;
-		bpp_ = 4;
+		params_.rgb.r_pos = 2;
+		params_.rgb.g_pos = 1;
+		params_.rgb.b_pos = 0;
+		params_.rgb.bpp = 4;
 		break;
 	case libcamera::formats::RGBA8888:
 		formatFamily_ = RGB;
-		r_pos_ = 3;
-		g_pos_ = 2;
-		b_pos_ = 1;
-		bpp_ = 4;
+		params_.rgb.r_pos = 3;
+		params_.rgb.g_pos = 2;
+		params_.rgb.b_pos = 1;
+		params_.rgb.bpp = 4;
 		break;
 	case libcamera::formats::ABGR8888:
 		formatFamily_ = RGB;
-		r_pos_ = 0;
-		g_pos_ = 1;
-		b_pos_ = 2;
-		bpp_ = 4;
+		params_.rgb.r_pos = 0;
+		params_.rgb.g_pos = 1;
+		params_.rgb.b_pos = 2;
+		params_.rgb.bpp = 4;
 		break;
 	case libcamera::formats::BGRA8888:
 		formatFamily_ = RGB;
-		r_pos_ = 1;
-		g_pos_ = 2;
-		b_pos_ = 3;
-		bpp_ = 4;
+		params_.rgb.r_pos = 1;
+		params_.rgb.g_pos = 2;
+		params_.rgb.b_pos = 3;
+		params_.rgb.bpp = 4;
 		break;
 
 	case libcamera::formats::VYUY:
 		formatFamily_ = YUV;
-		y_pos_ = 1;
-		cb_pos_ = 2;
+		params_.yuv.y_pos = 1;
+		params_.yuv.cb_pos = 2;
 		break;
 	case libcamera::formats::YVYU:
 		formatFamily_ = YUV;
-		y_pos_ = 0;
-		cb_pos_ = 3;
+		params_.yuv.y_pos = 0;
+		params_.yuv.cb_pos = 3;
 		break;
 	case libcamera::formats::UYVY:
 		formatFamily_ = YUV;
-		y_pos_ = 1;
-		cb_pos_ = 0;
+		params_.yuv.y_pos = 1;
+		params_.yuv.cb_pos = 0;
 		break;
 	case libcamera::formats::YUYV:
 		formatFamily_ = YUV;
-		y_pos_ = 0;
-		cb_pos_ = 1;
+		params_.yuv.y_pos = 0;
+		params_.yuv.cb_pos = 1;
 		break;
 
 	case libcamera::formats::MJPEG:
@@ -178,18 +178,20 @@ static void yuv_to_rgb(int y, int u, int v, int *r, int *g, int *b)
 
 void FormatConverter::convertNV(const unsigned char *src, unsigned char *dst)
 {
-	unsigned int c_stride = width_ * (2 / horzSubSample_);
-	unsigned int c_inc = horzSubSample_ == 1 ? 2 : 0;
-	unsigned int cb_pos = nvSwap_ ? 1 : 0;
-	unsigned int cr_pos = nvSwap_ ? 0 : 1;
+	unsigned int c_stride = width_ * (2 / params_.nv.horzSubSample);
+	unsigned int c_inc = params_.nv.horzSubSample == 1 ? 2 : 0;
+	unsigned int cb_pos = params_.nv.nvSwap ? 1 : 0;
+	unsigned int cr_pos = params_.nv.nvSwap ? 0 : 1;
 	const unsigned char *src_c = src + width_ * height_;
 	int r, g, b;
 
 	for (unsigned int y = 0; y < height_; y++) {
 		const unsigned char *src_y = src + y * width_;
-		const unsigned char *src_cb = src_c + (y / vertSubSample_) *
+		const unsigned char *src_cb = src_c +
+					      (y / params_.nv.vertSubSample) *
 					      c_stride + cb_pos;
-		const unsigned char *src_cr = src_c + (y / vertSubSample_) *
+		const unsigned char *src_cr = src_c +
+					      (y / params_.nv.vertSubSample) *
 					      c_stride + cr_pos;
 
 		for (unsigned int x = 0; x < width_; x += 2) {
@@ -223,9 +225,9 @@ void FormatConverter::convertRGB(const unsigned char *src, unsigned char *dst)
 
 	for (y = 0; y < height_; y++) {
 		for (x = 0; x < width_; x++) {
-			r = src[bpp_ * x + r_pos_];
-			g = src[bpp_ * x + g_pos_];
-			b = src[bpp_ * x + b_pos_];
+			r = src[params_.rgb.bpp * x + params_.rgb.r_pos];
+			g = src[params_.rgb.bpp * x + params_.rgb.g_pos];
+			b = src[params_.rgb.bpp * x + params_.rgb.b_pos];
 
 			dst[4 * x + 0] = b;
 			dst[4 * x + 1] = g;
@@ -233,7 +235,7 @@ void FormatConverter::convertRGB(const unsigned char *src, unsigned char *dst)
 			dst[4 * x + 3] = 0xff;
 		}
 
-		src += width_ * bpp_;
+		src += width_ * params_.rgb.bpp;
 		dst += width_ * 4;
 	}
 }
@@ -246,16 +248,18 @@ void FormatConverter::convertYUV(const unsigned char *src, unsigned char *dst)
 	unsigned int cr_pos;
 	int r, g, b, y, cr, cb;
 
-	cr_pos = (cb_pos_ + 2) % 4;
+	cr_pos = (params_.yuv.cb_pos + 2) % 4;
 	src_stride = width_ * 2;
 	dst_stride = width_ * 4;
 
 	for (src_y = 0, dst_y = 0; dst_y < height_; src_y++, dst_y++) {
 		for (src_x = 0, dst_x = 0; dst_x < width_; ) {
-			cb = src[src_y * src_stride + src_x * 4 + cb_pos_];
+			cb = src[src_y * src_stride + src_x * 4 +
+				 params_.yuv.cb_pos];
 			cr = src[src_y * src_stride + src_x * 4 + cr_pos];
 
-			y = src[src_y * src_stride + src_x * 4 + y_pos_];
+			y = src[src_y * src_stride + src_x * 4 +
+				params_.yuv.y_pos];
 			yuv_to_rgb(y, cb, cr, &r, &g, &b);
 			dst[dst_y * dst_stride + 4 * dst_x + 0] = b;
 			dst[dst_y * dst_stride + 4 * dst_x + 1] = g;
@@ -263,7 +267,8 @@ void FormatConverter::convertYUV(const unsigned char *src, unsigned char *dst)
 			dst[dst_y * dst_stride + 4 * dst_x + 3] = 0xff;
 			dst_x++;
 
-			y = src[src_y * src_stride + src_x * 4 + y_pos_ + 2];
+			y = src[src_y * src_stride + src_x * 4 +
+				params_.yuv.y_pos + 2];
 			yuv_to_rgb(y, cb, cr, &r, &g, &b);
 			dst[dst_y * dst_stride + 4 * dst_x + 0] = b;
 			dst[dst_y * dst_stride + 4 * dst_x + 1] = g;

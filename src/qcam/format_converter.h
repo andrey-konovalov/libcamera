@@ -40,20 +40,29 @@ private:
 
 	enum FormatFamily formatFamily_;
 
-	/* NV parameters */
-	unsigned int horzSubSample_;
-	unsigned int vertSubSample_;
-	bool nvSwap_;
+	union {
+		/* NV parameters */
+		struct nv_params {
+			unsigned int horzSubSample;
+			unsigned int vertSubSample;
+			bool nvSwap;
+		} nv;
 
-	/* RGB parameters */
-	unsigned int bpp_;
-	unsigned int r_pos_;
-	unsigned int g_pos_;
-	unsigned int b_pos_;
+		/* RGB parameters */
+		struct rgb_params {
+			unsigned int bpp;
+			unsigned int r_pos;
+			unsigned int g_pos;
+			unsigned int b_pos;
+		} rgb;
 
-	/* YUV parameters */
-	unsigned int y_pos_;
-	unsigned int cb_pos_;
+		/* YUV parameters */
+		struct yuv_params {
+			unsigned int y_pos;
+			unsigned int cb_pos;
+		} yuv;
+	} params_;
+
 };
 
 #endif /* __QCAM_FORMAT_CONVERTER_H__ */
