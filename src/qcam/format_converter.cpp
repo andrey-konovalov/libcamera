@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include <QImage>
+#include <QtDebug>
 
 #include <libcamera/formats.h>
 
@@ -132,6 +133,62 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 		params_.yuv.cb_pos = 1;
 		break;
 
+	case libcamera::formats::SRGGB10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 5;	/* 1.25 bytes per pixel */
+		params_.rawp.bpp_denom = 4;
+		params_.rawp.r_pos = 0;
+		break;
+
+	case libcamera::formats::SGRBG10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 5;
+		params_.rawp.bpp_denom = 4;
+		params_.rawp.r_pos = 1;
+		break;
+
+	case libcamera::formats::SGBRG10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 5;
+		params_.rawp.bpp_denom = 4;
+		params_.rawp.r_pos = 2;
+		break;
+
+	case libcamera::formats::SBGGR10_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 5;
+		params_.rawp.bpp_denom = 4;
+		params_.rawp.r_pos = 3;
+		break;
+
+	case libcamera::formats::SRGGB12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 3;	/* 1.5 bytes per pixel */
+		params_.rawp.bpp_denom = 2;
+		params_.rawp.r_pos = 0;
+		break;
+
+	case libcamera::formats::SGRBG12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 3;
+		params_.rawp.bpp_denom = 2;
+		params_.rawp.r_pos = 1;
+		break;
+
+	case libcamera::formats::SGBRG12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 3;
+		params_.rawp.bpp_denom = 2;
+		params_.rawp.r_pos = 2;
+		break;
+
+	case libcamera::formats::SBGGR12_CSI2P:
+		formatFamily_ = RAW_CSI2P;
+		params_.rawp.bpp_numer = 3;
+		params_.rawp.bpp_denom = 2;
+		params_.rawp.r_pos = 3;
+		break;
+
 	case libcamera::formats::MJPEG:
 		formatFamily_ = MJPEG;
 		break;
@@ -143,6 +200,45 @@ int FormatConverter::configure(const libcamera::PixelFormat &format,
 	format_ = format;
 	width_ = size.width();
 	height_ = size.height();
+
+	if (formatFamily_ == RAW_CSI2P) {
+		/*
+		 * For RAW_CSI2P the assumption is that height_ and width_
+		 * are even numbers.
+		 */
+		if ( width_ % 2 != 0 || height_ % 2 != 0 ) {
+			qWarning() << "Image width or height isn't even number";
+			return -EINVAL;
+		}
+
+		params_.rawp.srcLineLength = width_ * params_.rawp.bpp_numer /
+					     params_.rawp.bpp_denom;
+
+		/*
+		 * Calculate [g1,g2,b]_pos based on r_pos.
+		 * On entrance, r_pos is the position of red pixel in the
+		 * 2-by-2 pixel Bayer pattern, and is from 0 to 3 range:
+		 *    +---+---+
+		 *    | 0 | 1 |
+		 *    +---+---+
+		 *    | 2 | 3 |
+		 *    +---+---+
+		 * At exit, [r,g1,g2,b]_pos are offsetts of the color
+		 * values in the source buffer.
+		 */
+		if (params_.rawp.r_pos > 1) {
+			params_.rawp.r_pos = params_.rawp.r_pos - 2 +
+					     params_.rawp.srcLineLength;
+			params_.rawp.b_pos = 3 - params_.rawp.r_pos;
+		} else {
+			params_.rawp.b_pos = 1 - params_.rawp.r_pos +
+					     params_.rawp.srcLineLength;
+		}
+		params_.rawp.g1_pos = (params_.rawp.r_pos == 0 ||
+				       params_.rawp.b_pos == 0) ? 1 : 0;
+		params_.rawp.g2_pos = 1 - params_.rawp.g1_pos +
+				      params_.rawp.srcLineLength;
+	}
 
 	return 0;
 }
@@ -163,7 +259,49 @@ void FormatConverter::convert(const unsigned char *src, size_t size,
 	case NV:
 		convertNV(src, dst->bits());
 		break;
+	case RAW_CSI2P:
+		convertRawCSI2P(src, dst->bits());
+		break;
 	};
+}
+
+void FormatConverter::convertRawCSI2P(const unsigned char *src,
+				      unsigned char *dst)
+{
+	unsigned int g;
+	static unsigned char dst_buf[8] = { 0, 0, 0, 0xff };
+	unsigned int dstLineLength = width_ * 4;
+
+	for (unsigned int y = 0; y < height_; y += 2) {
+		for (unsigned x = 0; x < width_; x += params_.rawp.bpp_denom) {
+			for (unsigned int i = 0; i < params_.rawp.bpp_denom ;
+			     i += 2) {
+				/*
+				 * Process the current 2x2 group.
+				 * Use the average of the two green pixels as
+				 * the green value for all the pixels in the
+				 * group.
+				 */
+				dst_buf[0] = src[params_.rawp.b_pos];
+				g = src[params_.rawp.g1_pos];
+				g = (g + src[params_.rawp.g2_pos]) >> 1;
+				dst_buf[1] = (unsigned char)g;
+				dst_buf[2] = src[params_.rawp.r_pos];
+				src += 2;
+
+				memcpy(dst_buf + 4, dst_buf, 4);
+				memcpy(dst, dst_buf, 8);
+				memcpy(dst + dstLineLength, dst_buf, 8);
+				dst += 8;
+			}
+			src += params_.rawp.bpp_numer - params_.rawp.bpp_denom;
+		}
+		/* odd lines are copies of the even lines they follow: */
+		memcpy(dst, dst-dstLineLength, dstLineLength);
+		/* move to the next even line: */
+		src += params_.rawp.srcLineLength;
+		dst += dstLineLength;
+	}
 }
 
 static void yuv_to_rgb(int y, int u, int v, int *r, int *g, int *b)
