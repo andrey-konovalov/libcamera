@@ -5,5 +5,7 @@
 	<file>YUV_2_planes.frag</file>
 	<file>YUV_3_planes.frag</file>
 	<file>YUV_packed.frag</file>
+	<file>RAW.vert</file>
+	<file>raw12_packed.frag</file>
 </qresource>
 </RCC>

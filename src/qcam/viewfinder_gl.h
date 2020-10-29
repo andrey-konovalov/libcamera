@@ -63,7 +63,7 @@ private:
 	libcamera::FrameBuffer *buffer_;
 	libcamera::PixelFormat format_;
 	QSize size_;
-	unsigned char *yuvData_;
+	unsigned char *srcData_;
 
 	/* Shaders */
 	QOpenGLShaderProgram shaderProgram_;
@@ -85,6 +85,13 @@ private:
 	QOpenGLTexture textureY_;
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
+
+	/* Raw Bayer texture and parameters */
+	GLuint textureUniformRaw_;
+	GLuint textureUniformSrcSize_;
+	GLuint textureUniformFirstRed_;
+	QOpenGLTexture textureRaw_;
+	GLfloat firstRed_[2];
 
 	QMutex mutex_; /* Prevent concurrent access to image_ */
 };
