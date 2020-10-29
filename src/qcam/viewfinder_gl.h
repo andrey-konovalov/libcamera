@@ -87,6 +87,12 @@ private:
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
 
+	/* Raw Bayer texture and parameters */
+	GLuint textureUniformRaw_;
+	GLuint textureUniformSrcSize_;
+	GLuint textureUniformFirstRed_;
+	GLfloat firstRed_[2];
+
 	QMutex mutex_; /* Prevent concurrent access to image_ */
 };
 

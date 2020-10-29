@@ -36,6 +36,11 @@ static const QList<libcamera::PixelFormat> supportedFormats{
 	libcamera::formats::RGBA8888,
 	libcamera::formats::BGR888,
 	libcamera::formats::RGB888,
+	/* Raw Bayer 12-bit packed */
+	libcamera::formats::SBGGR12_CSI2P,
+	libcamera::formats::SGBRG12_CSI2P,
+	libcamera::formats::SGRBG12_CSI2P,
+	libcamera::formats::SRGGB12_CSI2P,
 };
 
 ViewFinderGL::ViewFinderGL(QWidget *parent)
@@ -203,6 +208,26 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 		fragmentShaderDefines_.append("#define RGB_PATTERN bgr");
 		fragmentShaderFile_ = ":RGB.frag";
 		break;
+	case libcamera::formats::SBGGR12_CSI2P:
+		firstRed_[0] = 1.0;
+		firstRed_[1] = 1.0;
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		break;
+	case libcamera::formats::SGBRG12_CSI2P:
+		firstRed_[0] = 0.0;
+		firstRed_[1] = 1.0;
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		break;
+	case libcamera::formats::SGRBG12_CSI2P:
+		firstRed_[0] = 1.0;
+		firstRed_[1] = 0.0;
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		break;
+	case libcamera::formats::SRGGB12_CSI2P:
+		firstRed_[0] = 0.0;
+		firstRed_[1] = 0.0;
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		break;
 	default:
 		ret = false;
 		qWarning() << "[ViewFinderGL]:"
@@ -219,7 +244,11 @@ bool ViewFinderGL::createVertexShader()
 	vertexShader_ = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
 
 	/* Compile the vertex shader */
+#if 0
 	if (!vertexShader_->compileSourceFile(":identity.vert")) {
+#else
+	if (!vertexShader_->compileSourceFile(":bayer.vert")) {
+#endif
 		qWarning() << "[ViewFinderGL]:" << vertexShader_->log();
 		return false;
 	}
@@ -290,6 +319,9 @@ bool ViewFinderGL::createFragmentShader()
 	textureUniformU_ = shaderProgram_.uniformLocation("tex_u");
 	textureUniformV_ = shaderProgram_.uniformLocation("tex_v");
 	textureUniformStepX_ = shaderProgram_.uniformLocation("tex_stepx");
+	textureUniformRaw_ = shaderProgram_.uniformLocation("tex_raw");
+	textureUniformSrcSize_ = shaderProgram_.uniformLocation("srcSize");
+	textureUniformFirstRed_ = shaderProgram_.uniformLocation("firstRed");
 
 	/* Create the textures. */
 	for (std::unique_ptr<QOpenGLTexture> &texture : textures_) {
@@ -306,8 +338,14 @@ bool ViewFinderGL::createFragmentShader()
 void ViewFinderGL::configureTexture(QOpenGLTexture &texture)
 {
 	glBindTexture(GL_TEXTURE_2D, texture.textureId());
+/* GL_LINEAR is not sutable for bayer format */
+#if 0
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+#else
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+#endif
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
@@ -544,6 +582,37 @@ void ViewFinderGL::doRender()
 			     GL_UNSIGNED_BYTE,
 			     data_);
 		shaderProgram_.setUniformValue(textureUniformY_, 0);
+		break;
+
+	case libcamera::formats::SBGGR12_CSI2P:
+	case libcamera::formats::SGBRG12_CSI2P:
+	case libcamera::formats::SGRBG12_CSI2P:
+	case libcamera::formats::SRGGB12_CSI2P:
+		/*
+		 * Packed raw Bayer 12-bit foramts are stored in RGB texture
+		 * to match the OpenGL texel size with the 3 bytes repeating
+		 * pattern in RAW12P.
+		 * The texture width is thus half of the image with.
+		 */
+		glActiveTexture(GL_TEXTURE0);
+		configureTexture(*textures_[0]);
+		glTexImage2D(GL_TEXTURE_2D,
+			     0,
+			     GL_RGB,
+			     size_.width() / 2,
+			     size_.height(),
+			     0,
+			     GL_RGB,
+			     GL_UNSIGNED_BYTE,
+			     data_);
+		shaderProgram_.setUniformValue(textureUniformRaw_, 0);
+		shaderProgram_.setUniformValue(textureUniformFirstRed_,
+					       firstRed_[0], firstRed_[1]);
+		shaderProgram_.setUniformValue(textureUniformSrcSize_,
+					       size_.width(),
+					       size_.height(),
+					       1.0f / (size_.width() / 2 - 1),
+					       1.0f / (size_.height() - 1));
 		break;
 
 	default:
