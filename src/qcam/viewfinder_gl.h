@@ -82,6 +82,8 @@ private:
 	/* Textures */
 	std::array<std::unique_ptr<QOpenGLTexture>, 3> textures_;
 
+	/* Common texture parameters */
+	GLuint textureMinMaxFilters_;
 	/* YUV texture parameters */
 	GLuint textureUniformU_;
 	GLuint textureUniformV_;
@@ -89,6 +91,11 @@ private:
 	GLuint textureUniformStepX_;
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
+	/* Raw Bayer texture parameters */
+	GLuint textureUniformRaw_;
+	GLuint textureUniformSrcSize_;
+	GLuint textureUniformFirstRed_;
+	GLfloat firstRed_[2];
 
 	QMutex mutex_; /* Prevent concurrent access to image_ */
 };
