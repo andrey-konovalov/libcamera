@@ -5,6 +5,8 @@
 	<file>YUV_2_planes.frag</file>
 	<file>YUV_3_planes.frag</file>
 	<file>YUV_packed.frag</file>
+	<file>bayer_12_packed.frag</file>
+	<file>bayer.vert</file>
 	<file>identity.vert</file>
 </qresource>
 </RCC>

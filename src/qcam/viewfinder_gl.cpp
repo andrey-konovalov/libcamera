@@ -36,6 +36,11 @@ static const QList<libcamera::PixelFormat> supportedFormats{
 	libcamera::formats::RGBA8888,
 	libcamera::formats::BGR888,
 	libcamera::formats::RGB888,
+	/* Raw Bayer 12-bit packed */
+	libcamera::formats::SBGGR12_CSI2P,
+	libcamera::formats::SGBRG12_CSI2P,
+	libcamera::formats::SGRBG12_CSI2P,
+	libcamera::formats::SRGGB12_CSI2P,
 };
 
 ViewFinderGL::ViewFinderGL(QWidget *parent)
@@ -115,6 +120,7 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 	bool ret = true;
 
 	vertexShaderFile_ = ":identity.vert";
+	textureMinMagFilters_ = GL_LINEAR;
 
 	fragmentShaderDefines_.clear();
 
@@ -205,6 +211,34 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 		fragmentShaderDefines_.append("#define RGB_PATTERN bgr");
 		fragmentShaderFile_ = ":RGB.frag";
 		break;
+	case libcamera::formats::SBGGR12_CSI2P:
+		firstRed_.setX(1.0);
+		firstRed_.setY(1.0);
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		vertexShaderFile_ = ":bayer.vert";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SGBRG12_CSI2P:
+		firstRed_.setX(0.0);
+		firstRed_.setY(1.0);
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		vertexShaderFile_ = ":bayer.vert";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SGRBG12_CSI2P:
+		firstRed_.setX(1.0);
+		firstRed_.setY(0.0);
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		vertexShaderFile_ = ":bayer.vert";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SRGGB12_CSI2P:
+		firstRed_.setX(0.0);
+		firstRed_.setY(0.0);
+		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		vertexShaderFile_ = ":bayer.vert";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
 	default:
 		ret = false;
 		qWarning() << "[ViewFinderGL]:"
@@ -292,6 +326,8 @@ bool ViewFinderGL::createFragmentShader()
 	textureUniformU_ = shaderProgram_.uniformLocation("tex_u");
 	textureUniformV_ = shaderProgram_.uniformLocation("tex_v");
 	textureUniformStep_ = shaderProgram_.uniformLocation("tex_step");
+	textureUniformSize_ = shaderProgram_.uniformLocation("tex_size");
+	textureUniformBayerFirstRed_ = shaderProgram_.uniformLocation("tex_bayer_first_red");
 
 	/* Create the textures. */
 	for (std::unique_ptr<QOpenGLTexture> &texture : textures_) {
@@ -308,8 +344,10 @@ bool ViewFinderGL::createFragmentShader()
 void ViewFinderGL::configureTexture(QOpenGLTexture &texture)
 {
 	glBindTexture(GL_TEXTURE_2D, texture.textureId());
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+			textureMinMagFilters_);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+			textureMinMagFilters_);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
@@ -547,6 +585,38 @@ void ViewFinderGL::doRender()
 			     GL_UNSIGNED_BYTE,
 			     data_);
 		shaderProgram_.setUniformValue(textureUniformY_, 0);
+		break;
+
+	case libcamera::formats::SBGGR12_CSI2P:
+	case libcamera::formats::SGBRG12_CSI2P:
+	case libcamera::formats::SGRBG12_CSI2P:
+	case libcamera::formats::SRGGB12_CSI2P:
+		/*
+		 * Packed raw Bayer 12-bit formats are stored in RGB texture
+		 * to match the OpenGL texel size with the 3 bytes repeating
+		 * pattern in RAW12P.
+		 * The texture width is thus half of the image with.
+		 */
+		glActiveTexture(GL_TEXTURE0);
+		configureTexture(*textures_[0]);
+		glTexImage2D(GL_TEXTURE_2D,
+			     0,
+			     GL_RGB,
+			     size_.width() / 2,
+			     size_.height(),
+			     0,
+			     GL_RGB,
+			     GL_UNSIGNED_BYTE,
+			     data_);
+		shaderProgram_.setUniformValue(textureUniformY_, 0);
+		shaderProgram_.setUniformValue(textureUniformBayerFirstRed_,
+					       firstRed_);
+		shaderProgram_.setUniformValue(textureUniformSize_,
+					       size_.width(),
+					       size_.height());
+		shaderProgram_.setUniformValue(textureUniformStep_,
+					       1.0f / (size_.width() / 2 - 1),
+					       1.0f / (size_.height() - 1));
 		break;
 
 	default:
