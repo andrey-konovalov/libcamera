@@ -8,6 +8,7 @@
 #ifndef __VIEWFINDER_GL_H__
 #define __VIEWFINDER_GL_H__
 
+#include <array>
 #include <memory>
 
 #include <QImage>
@@ -82,9 +83,7 @@ private:
 	GLuint textureUniformV_;
 	GLuint textureUniformY_;
 	GLuint textureUniformStepX_;
-	QOpenGLTexture textureU_;
-	QOpenGLTexture textureV_;
-	QOpenGLTexture textureY_;
+	std::array<std::unique_ptr<QOpenGLTexture>, 3> textures_;
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
 
