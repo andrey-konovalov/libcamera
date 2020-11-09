@@ -72,6 +72,7 @@ private:
 	QOpenGLShaderProgram shaderProgram_;
 	std::unique_ptr<QOpenGLShader> vertexShader_;
 	std::unique_ptr<QOpenGLShader> fragmentShader_;
+	QString vertexShaderFile_;
 	QString fragmentShaderFile_;
 	QStringList fragmentShaderDefines_;
 

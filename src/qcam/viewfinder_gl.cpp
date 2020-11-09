@@ -114,6 +114,8 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 {
 	bool ret = true;
 
+	vertexShaderFile_ = ":identity.vert";
+
 	fragmentShaderDefines_.clear();
 
 	switch (format) {
@@ -219,7 +221,7 @@ bool ViewFinderGL::createVertexShader()
 	vertexShader_ = std::make_unique<QOpenGLShader>(QOpenGLShader::Vertex, this);
 
 	/* Compile the vertex shader */
-	if (!vertexShader_->compileSourceFile(":identity.vert")) {
+	if (!vertexShader_->compileSourceFile(vertexShaderFile_)) {
 		qWarning() << "[ViewFinderGL]:" << vertexShader_->log();
 		return false;
 	}
