@@ -86,7 +86,7 @@ private:
 	GLuint textureUniformU_;
 	GLuint textureUniformV_;
 	GLuint textureUniformY_;
-	GLuint textureUniformStepX_;
+	GLuint textureUniformStep_;
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
 
