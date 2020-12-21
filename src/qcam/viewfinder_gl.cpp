@@ -236,7 +236,7 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 		firstRed_.setX(0.0);
 		firstRed_.setY(0.0);
 		fragmentShaderFile_ = ":bayer_12_packed.frag";
-		vertexShaderFile_ = ":bayer.vert";
+		//vertexShaderFile_ = ":bayer.vert";
 		textureMinMagFilters_ = GL_NEAREST;
 		break;
 	default:
@@ -612,7 +612,7 @@ void ViewFinderGL::doRender()
 		shaderProgram_.setUniformValue(textureUniformBayerFirstRed_,
 					       firstRed_);
 		shaderProgram_.setUniformValue(textureUniformSize_,
-					       size_.width(),
+					       size_.width() / 2,
 					       size_.height());
 		shaderProgram_.setUniformValue(textureUniformStep_,
 					       1.0f / (size_.width() / 2 - 1),

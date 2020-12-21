@@ -10,9 +10,11 @@
 precision mediump float;
 #endif
 
-varying vec4 center;
-varying vec2 xcoords;
-varying vec2 ycoords;
+varying vec2 textureOut;
+
+uniform vec2 tex_size;
+uniform vec2 tex_step;
+uniform vec2 tex_bayer_first_red;
 
 uniform sampler2D tex_raw;
 
@@ -20,10 +22,22 @@ void main(void)
 {
 	vec3 rgb;
 
-	vec2 alternate = mod(center.zw, 2.0);
+	vec4 center;
+	vec2 xcoords;
+	vec2 ycoords;
 
+	center.xy = textureOut * tex_size; /* center.xy - coords in texels */
+	center.z = floor(center.x * 2.0);  /* center.zw - coords in pixels */
+	center.xy = floor(center.xy);	/* center.xy set to nearest texel */
+	center.w = center.y;		/* center.zw set to nearest pixel */
+
+	vec2 alternate = mod(center.zw + tex_bayer_first_red, 2.0);
 	bool even_col = alternate.x < 1.0;
 	bool even_raw = alternate.y < 1.0;
+
+	center.xy *= tex_step;	/* center.xy converted to texture coordinates */
+	xcoords = center.x + vec2(-tex_step.x, tex_step.x);
+	ycoords = center.y + vec2(-tex_step.y, tex_step.y);
 
 	/* .xy = (0,-1).rg, zw = (0, 1).rg */
 	vec4 vals_AD = vec4(
