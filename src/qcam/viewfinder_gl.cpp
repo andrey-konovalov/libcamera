@@ -41,6 +41,11 @@ static const QList<libcamera::PixelFormat> supportedFormats{
 	libcamera::formats::SGBRG12_CSI2P,
 	libcamera::formats::SGRBG12_CSI2P,
 	libcamera::formats::SRGGB12_CSI2P,
+	/* Raw Bayer 10-bit packed */
+	libcamera::formats::SBGGR10_CSI2P,
+	libcamera::formats::SGBRG10_CSI2P,
+	libcamera::formats::SGRBG10_CSI2P,
+	libcamera::formats::SRGGB10_CSI2P,
 };
 
 ViewFinderGL::ViewFinderGL(QWidget *parent)
@@ -233,6 +238,34 @@ bool ViewFinderGL::selectFormat(const libcamera::PixelFormat &format)
 		firstRed_.setX(0.0);
 		firstRed_.setY(0.0);
 		fragmentShaderFile_ = ":bayer_12_packed.frag";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SBGGR10_CSI2P:
+		firstRed_.setX(1.0);
+		firstRed_.setY(1.0);
+		fragmentShaderDefines_.append("#define BPP_X 1.25");
+		fragmentShaderFile_ = ":bayer_10_packed.frag";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SGBRG10_CSI2P:
+		firstRed_.setX(0.0);
+		firstRed_.setY(1.0);
+		fragmentShaderDefines_.append("#define BPP_X 1.25");
+		fragmentShaderFile_ = ":bayer_10_packed.frag";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SGRBG10_CSI2P:
+		firstRed_.setX(1.0);
+		firstRed_.setY(0.0);
+		fragmentShaderDefines_.append("#define BPP_X 1.25");
+		fragmentShaderFile_ = ":bayer_10_packed.frag";
+		textureMinMagFilters_ = GL_NEAREST;
+		break;
+	case libcamera::formats::SRGGB10_CSI2P:
+		firstRed_.setX(0.0);
+		firstRed_.setY(0.0);
+		fragmentShaderDefines_.append("#define BPP_X 1.25");
+		fragmentShaderFile_ = ":bayer_10_packed.frag";
 		textureMinMagFilters_ = GL_NEAREST;
 		break;
 	default:
@@ -612,6 +645,39 @@ void ViewFinderGL::doRender()
 					       size_.height());
 		shaderProgram_.setUniformValue(textureUniformStep_,
 					       1.0f / (size_.width() / 2 - 1),
+					       1.0f / (size_.height() - 1));
+		break;
+
+	case libcamera::formats::SBGGR10_CSI2P:
+	case libcamera::formats::SGBRG10_CSI2P:
+	case libcamera::formats::SGRBG10_CSI2P:
+	case libcamera::formats::SRGGB10_CSI2P:
+		/*
+		 * Packed raw Bayer 10-bit formats are stored in GL_RED texture.
+		 * The texture width is 10/8 of the image width.
+		 * TODO: account for padding bytes at the end of the line.
+		 */
+		glActiveTexture(GL_TEXTURE0);
+		configureTexture(*textures_[0]);
+		glTexImage2D(GL_TEXTURE_2D,
+			     0,
+			     GL_RED,
+			     size_.width() * 5 / 4,
+			     size_.height(),
+			     0,
+			     GL_RED,
+			     GL_UNSIGNED_BYTE,
+			     data_);
+		shaderProgram_.setUniformValue(textureUniformY_, 0);
+		shaderProgram_.setUniformValue(textureUniformBayerFirstRed_,
+					       firstRed_);
+		shaderProgram_.setUniformValue(textureUniformSize_,
+					       size_.width() * 5 / 4,
+					       size_.height(),
+					       size_.width(),
+					       size_.height());
+		shaderProgram_.setUniformValue(textureUniformStep_,
+					       1.0f / (size_.width() * 5 / 4 - 1),
 					       1.0f / (size_.height() - 1));
 		break;
 
