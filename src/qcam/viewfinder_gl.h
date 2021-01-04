@@ -66,6 +66,7 @@ private:
 	libcamera::FrameBuffer *buffer_;
 	libcamera::PixelFormat format_;
 	QSize size_;
+	unsigned int stride_;
 	unsigned char *data_;
 
 	/* Shaders */
@@ -81,13 +82,19 @@ private:
 	/* Textures */
 	std::array<std::unique_ptr<QOpenGLTexture>, 3> textures_;
 
+	/* Common texture parameters */
+	GLuint textureMinMagFilters_;
 	/* YUV texture parameters */
 	GLuint textureUniformU_;
 	GLuint textureUniformV_;
 	GLuint textureUniformY_;
+	GLuint textureUniformSize_;
 	GLuint textureUniformStep_;
 	unsigned int horzSubSample_;
 	unsigned int vertSubSample_;
+	/* Raw Bayer texture parameters */
+	GLuint textureUniformBayerFirstRed_;
+	QPointF firstRed_;
 
 	QMutex mutex_; /* Prevent concurrent access to image_ */
 };
