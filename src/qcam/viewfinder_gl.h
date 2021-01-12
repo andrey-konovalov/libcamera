@@ -66,6 +66,7 @@ private:
 	libcamera::FrameBuffer *buffer_;
 	libcamera::PixelFormat format_;
 	QSize size_;
+	int stride_;
 	unsigned char *data_;
 
 	/* Shaders */
