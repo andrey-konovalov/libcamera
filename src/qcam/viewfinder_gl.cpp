@@ -111,6 +111,10 @@ void ViewFinderGL::render(libcamera::FrameBuffer *buffer, MappedBuffer *map)
 		renderComplete(buffer_);
 
 	data_ = static_cast<unsigned char *>(map->memory);
+	/*
+	 * \todo Get the stride from the buffer instead of computing it naively
+	 */
+	stride_ = buffer->metadata().planes[0].bytesused / size_.height();
 	update();
 	buffer_ = buffer;
 }
@@ -594,14 +598,13 @@ void ViewFinderGL::doRender()
 		/*
 		 * Packed raw Bayer 10-bit formats are stored in GL_RED texture.
 		 * The texture width is 10/8 of the image width.
-		 * TODO: account for padding bytes at the end of the line.
 		 */
 		glActiveTexture(GL_TEXTURE0);
 		configureTexture(*textures_[0]);
 		glTexImage2D(GL_TEXTURE_2D,
 			     0,
 			     GL_RED,
-			     size_.width() * 5 / 4,
+			     stride_,
 			     size_.height(),
 			     0,
 			     GL_RED,
@@ -611,12 +614,12 @@ void ViewFinderGL::doRender()
 		shaderProgram_.setUniformValue(textureUniformBayerFirstRed_,
 					       firstRed_);
 		shaderProgram_.setUniformValue(textureUniformSize_,
-					       size_.width() * 5 / 4,
+					       stride_,
 					       size_.height(),
 					       size_.width(),
 					       size_.height());
 		shaderProgram_.setUniformValue(textureUniformStep_,
-					       1.0f / (size_.width() * 5 / 4 - 1),
+					       1.0f / (stride_ - 1),
 					       1.0f / (size_.height() - 1));
 		break;
 
