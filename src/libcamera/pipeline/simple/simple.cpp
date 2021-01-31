@@ -157,7 +157,7 @@ public:
 
 	struct Configuration {
 		uint32_t code;
-		PixelFormat pixelFormat;
+		PixelFormat captureFormat;
 		Size captureSize;
 		SizeRange outputSizes;
 	};
@@ -379,7 +379,7 @@ int SimpleCameraData::init()
 
 			Configuration config;
 			config.code = code;
-			config.pixelFormat = pixelFormat;
+			config.captureFormat = pixelFormat;
 			config.captureSize = format.size;
 
 			if (!converter) {
@@ -551,7 +551,7 @@ CameraConfiguration::Status SimpleCameraConfiguration::validate()
 		status = Adjusted;
 	}
 
-	needConversion_ = cfg.pixelFormat != pipeConfig.pixelFormat
+	needConversion_ = cfg.pixelFormat != pipeConfig.captureFormat
 			|| cfg.size != pipeConfig.captureSize;
 
 	cfg.bufferCount = 3;
@@ -656,7 +656,7 @@ int SimplePipelineHandler::configure(Camera *camera, CameraConfiguration *c)
 		return ret;
 
 	/* Configure the video node. */
-	V4L2PixelFormat videoFormat = video->toV4L2PixelFormat(pipeConfig.pixelFormat);
+	V4L2PixelFormat videoFormat = video->toV4L2PixelFormat(pipeConfig.captureFormat);
 
 	V4L2DeviceFormat captureFormat;
 	captureFormat.fourcc = videoFormat;
@@ -686,7 +686,7 @@ int SimplePipelineHandler::configure(Camera *camera, CameraConfiguration *c)
 
 	if (useConverter_) {
 		StreamConfiguration inputCfg;
-		inputCfg.pixelFormat = pipeConfig.pixelFormat;
+		inputCfg.pixelFormat = pipeConfig.captureFormat;
 		inputCfg.size = pipeConfig.captureSize;
 		inputCfg.stride = captureFormat.planes[0].bpl;
 		inputCfg.bufferCount = cfg.bufferCount;
