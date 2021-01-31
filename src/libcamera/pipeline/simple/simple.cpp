@@ -173,7 +173,7 @@ public:
 
 	std::vector<std::unique_ptr<FrameBuffer>> converterBuffers_;
 	bool useConverter_;
-	std::queue<FrameBuffer *> converterQueue_;
+	std::queue<std::map<unsigned int, FrameBuffer *>> converterQueue_;
 };
 
 class SimpleCameraConfiguration : public CameraConfiguration
@@ -762,10 +762,12 @@ int SimplePipelineHandler::exportFrameBuffers(Camera *camera, Stream *stream,
 	 * Export buffers on the converter or capture video node, depending on
 	 * whether the converter is used or not.
 	 */
-	if (data->useConverter_)
-		return converter_->exportBuffers(0, count, buffers);
-	else
+	if (data->useConverter_) {
+		unsigned int index = stream - &data->streams_.front();
+		return converter_->exportBuffers(index, count, buffers);
+	} else {
 		return data->video_->exportBuffers(count, buffers);
+	}
 }
 
 int SimplePipelineHandler::start(Camera *camera, [[maybe_unused]] const ControlList *controls)
@@ -830,25 +832,30 @@ void SimplePipelineHandler::stop(Camera *camera)
 int SimplePipelineHandler::queueRequestDevice(Camera *camera, Request *request)
 {
 	SimpleCameraData *data = cameraData(camera);
-	Stream *stream = &data->streams_[0];
+	int ret;
 
-	FrameBuffer *buffer = request->findBuffer(stream);
-	if (!buffer) {
-		LOG(SimplePipeline, Error)
-			<< "Attempt to queue request with invalid stream";
-		return -ENOENT;
+	std::map<unsigned int, FrameBuffer *> buffers;
+
+	for (auto &[stream, buffer] : request->buffers()) {
+		/*
+		 * If conversion is needed, push the buffer to the converter
+		 * queue, it will be handed to the converter in the capture
+		 * completion handler.
+		 */
+		if (data->useConverter_) {
+			unsigned int index = stream - &data->streams_.front();
+			buffers.emplace(index, buffer);
+		} else {
+			ret = data->video_->queueBuffer(buffer);
+			if (ret < 0)
+				return ret;
+		}
 	}
 
-	/*
-	 * If conversion is needed, push the buffer to the converter queue, it
-	 * will be handed to the converter in the capture completion handler.
-	 */
-	if (data->useConverter_) {
-		data->converterQueue_.push(buffer);
-		return 0;
-	}
+	if (data->useConverter_)
+		data->converterQueue_.push(std::move(buffers));
 
-	return data->video_->queueBuffer(buffer);
+	return 0;
 }
 
 /* -----------------------------------------------------------------------------
@@ -1020,24 +1027,34 @@ void SimplePipelineHandler::bufferReady(FrameBuffer *buffer)
 	 * point converting an erroneous buffer.
 	 */
 	if (buffer->metadata().status != FrameMetadata::FrameSuccess) {
-		if (data->useConverter_) {
-			/* Requeue the buffer for capture. */
-			data->video_->queueBuffer(buffer);
-
-			/*
-			 * Get the next user-facing buffer to complete the
-			 * request.
-			 */
-			if (data->converterQueue_.empty())
-				return;
-
-			buffer = data->converterQueue_.front();
-			data->converterQueue_.pop();
+		if (!data->useConverter_) {
+			/* No conversion, just complete the request. */
+			Request *request = buffer->request();
+			completeBuffer(request, buffer);
+			completeRequest(request);
+			return;
 		}
 
-		Request *request = buffer->request();
-		completeBuffer(request, buffer);
-		completeRequest(request);
+		/*
+		 * The converter is in use. Requeue the internal buffer for
+		 * capture, and complete the request with all the user-facing
+		 * buffers.
+		 */
+		data->video_->queueBuffer(buffer);
+
+		if (data->converterQueue_.empty())
+			return;
+
+		Request *request = nullptr;
+		for (auto &item : data->converterQueue_.front()) {
+			FrameBuffer *outputBuffer = item.second;
+			request = outputBuffer->request();
+			completeBuffer(request, outputBuffer);
+		}
+		data->converterQueue_.pop();
+
+		if (request)
+			completeRequest(request);
 		return;
 	}
 
@@ -1052,10 +1069,8 @@ void SimplePipelineHandler::bufferReady(FrameBuffer *buffer)
 			return;
 		}
 
-		FrameBuffer *output = data->converterQueue_.front();
+		converter_->queueBuffers(buffer, data->converterQueue_.front());
 		data->converterQueue_.pop();
-
-		converter_->queueBuffers(buffer, { { 0, output } });
 		return;
 	}
 
@@ -1078,10 +1093,10 @@ void SimplePipelineHandler::converterOutputDone(FrameBuffer *buffer)
 {
 	ASSERT(activeCamera_);
 
-	/* Complete the request. */
+	/* Complete the buffer and the request. */
 	Request *request = buffer->request();
-	completeBuffer(request, buffer);
-	completeRequest(request);
+	if (completeBuffer(request, buffer))
+		completeRequest(request);
 }
 
 REGISTER_PIPELINE_HANDLER(SimplePipelineHandler)
