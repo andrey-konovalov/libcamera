@@ -8,7 +8,10 @@
 #ifndef __LIBCAMERA_PIPELINE_SIMPLE_CONVERTER_H__
 #define __LIBCAMERA_PIPELINE_SIMPLE_CONVERTER_H__
 
+#include <functional>
+#include <map>
 #include <memory>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -37,26 +40,53 @@ public:
 	strideAndFrameSize(const PixelFormat &pixelFormat, const Size &size);
 
 	int configure(const StreamConfiguration &inputCfg,
-		      const StreamConfiguration &outputCfg);
-	int exportBuffers(unsigned int count,
+		      const std::vector<std::reference_wrapper<StreamConfiguration>> &outputCfg);
+	int exportBuffers(unsigned int ouput, unsigned int count,
 			  std::vector<std::unique_ptr<FrameBuffer>> *buffers);
 
 	int start();
 	void stop();
 
-	int queueBuffers(FrameBuffer *input, FrameBuffer *output);
+	int queueBuffers(FrameBuffer *input,
+			 const std::map<unsigned int, FrameBuffer *> &outputs);
 
 	Signal<FrameBuffer *> inputBufferReady;
 	Signal<FrameBuffer *> outputBufferReady;
 
 private:
-	void m2mInputBufferReady(FrameBuffer *buffer);
-	void m2mOutputBufferReady(FrameBuffer *buffer);
+	class Stream
+	{
+	public:
+		Stream(SimpleConverter *converter);
 
+		bool isValid() const { return m2m_ != nullptr; }
+
+		int configure(const StreamConfiguration &inputCfg,
+			      const StreamConfiguration &outputCfg);
+		int exportBuffers(unsigned int count,
+				  std::vector<std::unique_ptr<FrameBuffer>> *buffers);
+
+		int start();
+		void stop();
+
+		int queueBuffers(FrameBuffer *input, FrameBuffer *output);
+
+	private:
+		void captureBufferReady(FrameBuffer *buffer);
+		void outputBufferReady(FrameBuffer *buffer);
+
+		SimpleConverter *converter_;
+		std::unique_ptr<V4L2M2MDevice> m2m_;
+
+		unsigned int inputBufferCount_;
+		unsigned int outputBufferCount_;
+	};
+
+	std::string deviceNode_;
 	std::unique_ptr<V4L2M2MDevice> m2m_;
 
-	unsigned int inputBufferCount_;
-	unsigned int outputBufferCount_;
+	std::vector<Stream> streams_;
+	std::map<FrameBuffer *, unsigned int> queue_;
 };
 
 } /* namespace libcamera */
