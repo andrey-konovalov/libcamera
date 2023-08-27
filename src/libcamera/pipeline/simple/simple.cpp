@@ -37,6 +37,7 @@
 #include "libcamera/internal/v4l2_subdevice.h"
 #include "libcamera/internal/v4l2_videodevice.h"
 
+#include "libcamera/internal/converter/ae.h"
 #include "libcamera/internal/converter/converter_softw.h"
 
 namespace libcamera {
@@ -281,6 +282,9 @@ private:
 
 	void converterInputDone(FrameBuffer *buffer);
 	void converterOutputDone(FrameBuffer *buffer);
+
+	std::unique_ptr<Agc> agc_;
+	void converterAgcDataReady(float bright_ratio, float too_bright_ratio);
 };
 
 class SimpleCameraConfiguration : public CameraConfiguration
@@ -517,6 +521,9 @@ int SimpleCameraData::init()
 			converter_->outputBufferReady.connect(this, &SimpleCameraData::converterOutputDone);
 		}
 	}
+
+	agc_ = std::make_unique<Agc>(sensor_);
+	static_cast<SwConverter *>(converter_.get())->agcDataReady.connect(this, &SimpleCameraData::converterAgcDataReady);
 
 	video_ = pipe->video(entities_.back().entity);
 	ASSERT(video_);
@@ -841,6 +848,12 @@ void SimpleCameraData::converterOutputDone(FrameBuffer *buffer)
 	Request *request = buffer->request();
 	if (pipe->completeBuffer(request, buffer))
 		pipe->completeRequest(request);
+}
+
+void SimpleCameraData::converterAgcDataReady(float bright_ratio,
+					     float too_bright_ratio)
+{
+	agc_->process(sensor_, bright_ratio, too_bright_ratio);
 }
 
 /* Retrieve all source pads connected to a sink pad through active routes. */
