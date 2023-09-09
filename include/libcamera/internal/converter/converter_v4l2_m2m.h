@@ -20,7 +20,7 @@
 
 #include <libcamera/pixel_format.h>
 
-#include "libcamera/internal/converter.h"
+#include "libcamera/internal/converter_media.h"
 
 namespace libcamera {
 
@@ -31,7 +31,7 @@ class SizeRange;
 struct StreamConfiguration;
 class V4L2M2MDevice;
 
-class V4L2M2MConverter : public Converter
+class V4L2M2MConverter : public ConverterMD
 {
 public:
 	V4L2M2MConverter(MediaDevice *media);

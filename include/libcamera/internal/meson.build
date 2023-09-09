@@ -21,6 +21,7 @@ libcamera_internal_headers = files([
     'control_serializer.h',
     'control_validator.h',
     'converter.h',
+    'converter_media.h',
     'delayed_controls.h',
     'device_enumerator.h',
     'device_enumerator_sysfs.h',

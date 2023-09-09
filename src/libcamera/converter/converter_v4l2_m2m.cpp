@@ -194,7 +194,7 @@ void V4L2M2MConverter::Stream::captureBufferReady(FrameBuffer *buffer)
  */
 
 V4L2M2MConverter::V4L2M2MConverter(MediaDevice *media)
-	: Converter(media)
+	: ConverterMD(media)
 {
 	if (deviceNode().empty())
 		return;
@@ -448,6 +448,6 @@ static std::initializer_list<std::string> compatibles = {
 	"pxp",
 };
 
-REGISTER_CONVERTER("v4l2_m2m", V4L2M2MConverter, compatibles)
+REGISTER_CONVERTER_MD("v4l2_m2m", V4L2M2MConverter, compatibles)
 
 } /* namespace libcamera */
