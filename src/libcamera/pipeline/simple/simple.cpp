@@ -37,6 +37,7 @@
 #include "libcamera/internal/v4l2_subdevice.h"
 #include "libcamera/internal/v4l2_videodevice.h"
 
+#include "libcamera/internal/converter/converter_softw.h"
 
 namespace libcamera {
 
@@ -185,17 +186,21 @@ struct SimplePipelineInfo {
 	 * and the number of streams it supports.
 	 */
 	std::vector<std::pair<const char *, unsigned int>> converters;
+	/*
+	 * Nonzero value enables creating software converter
+	 */
+	bool enable_sw_converter;
 };
 
 namespace {
 
 static const SimplePipelineInfo supportedDevices[] = {
-	{ "dcmipp", {} },
-	{ "imx7-csi", { { "pxp", 1 } } },
-	{ "j721e-csi2rx", {} },
-	{ "mxc-isi", {} },
-	{ "qcom-camss", {} },
-	{ "sun6i-csi", {} },
+	{ "dcmipp", {}, false },
+	{ "imx7-csi", { { "pxp", 1 } }, false },
+	{ "j721e-csi2rx", {}, false },
+	{ "mxc-isi", {}, false },
+	{ "qcom-camss", {}, true },
+	{ "sun6i-csi", {}, false },
 };
 
 } /* namespace */
@@ -331,6 +336,7 @@ public:
 	V4L2VideoDevice *video(const MediaEntity *entity);
 	V4L2Subdevice *subdev(const MediaEntity *entity);
 	MediaDevice *converter() { return converter_; }
+	bool sw_converter_enabled() { return enable_sw_converter_; }
 
 protected:
 	int queueRequestDevice(Camera *camera, Request *request) override;
@@ -359,6 +365,8 @@ private:
 	std::map<const MediaEntity *, EntityData> entities_;
 
 	MediaDevice *converter_;
+
+	bool enable_sw_converter_;
 };
 
 /* -----------------------------------------------------------------------------
@@ -495,6 +503,7 @@ int SimpleCameraData::init()
 	int ret;
 
 	/* Open the converter, if any. */
+	converter_ = nullptr;
 	MediaDevice *converter = pipe->converter();
 	if (converter) {
 		converter_ = ConverterMDFactoryBase::create(converter);
@@ -502,10 +511,15 @@ int SimpleCameraData::init()
 			LOG(SimplePipeline, Warning)
 				<< "Failed to create converter, disabling format conversion";
 			converter_.reset();
-		} else {
-			converter_->inputBufferReady.connect(this, &SimpleCameraData::converterInputDone);
-			converter_->outputBufferReady.connect(this, &SimpleCameraData::converterOutputDone);
 		}
+	}
+	/* Don't create sw converter if media device converter is created. */
+	if (!converter_ && pipe->sw_converter_enabled()) {
+		converter_ = std::make_unique<SwConverter>();
+	}
+	if (converter_) {
+		converter_->inputBufferReady.connect(this, &SimpleCameraData::converterInputDone);
+		converter_->outputBufferReady.connect(this, &SimpleCameraData::converterOutputDone);
 	}
 
 	video_ = pipe->video(entities_.back().entity);
@@ -1417,6 +1431,8 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 			break;
 		}
 	}
+
+	enable_sw_converter_ = info->enable_sw_converter;
 
 	/* Locate the sensors. */
 	std::vector<MediaEntity *> sensors = locateSensors();
