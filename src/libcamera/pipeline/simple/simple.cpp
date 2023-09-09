@@ -30,7 +30,7 @@
 
 #include "libcamera/internal/camera.h"
 #include "libcamera/internal/camera_sensor.h"
-#include "libcamera/internal/converter.h"
+#include "libcamera/internal/converter_media.h"
 #include "libcamera/internal/device_enumerator.h"
 #include "libcamera/internal/media_device.h"
 #include "libcamera/internal/pipeline_handler.h"
@@ -497,7 +497,7 @@ int SimpleCameraData::init()
 	/* Open the converter, if any. */
 	MediaDevice *converter = pipe->converter();
 	if (converter) {
-		converter_ = ConverterFactoryBase::create(converter);
+		converter_ = ConverterMDFactoryBase::create(converter);
 		if (!converter_) {
 			LOG(SimplePipeline, Warning)
 				<< "Failed to create converter, disabling format conversion";

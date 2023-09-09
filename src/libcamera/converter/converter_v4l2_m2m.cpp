@@ -29,7 +29,7 @@
 
 namespace libcamera {
 
-LOG_DECLARE_CATEGORY(Converter)
+LOG_DECLARE_CATEGORY(ConverterMD)
 
 /* -----------------------------------------------------------------------------
  * V4L2M2MConverter::Stream
@@ -62,14 +62,14 @@ int V4L2M2MConverter::Stream::configure(const StreamConfiguration &inputCfg,
 
 	int ret = m2m_->output()->setFormat(&format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set input format: " << strerror(-ret);
 		return ret;
 	}
 
 	if (format.fourcc != videoFormat || format.size != inputCfg.size ||
 	    format.planes[0].bpl != inputCfg.stride) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Input format not supported (requested "
 			<< inputCfg.size << "-" << videoFormat
 			<< ", got " << format << ")";
@@ -84,13 +84,13 @@ int V4L2M2MConverter::Stream::configure(const StreamConfiguration &inputCfg,
 
 	ret = m2m_->capture()->setFormat(&format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set output format: " << strerror(-ret);
 		return ret;
 	}
 
 	if (format.fourcc != videoFormat || format.size != outputCfg.size) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Output format not supported";
 		return -EINVAL;
 	}
@@ -194,7 +194,7 @@ void V4L2M2MConverter::Stream::captureBufferReady(FrameBuffer *buffer)
  */
 
 V4L2M2MConverter::V4L2M2MConverter(MediaDevice *media)
-	: Converter(media)
+	: ConverterMD(media)
 {
 	if (deviceNode().empty())
 		return;
@@ -236,13 +236,13 @@ std::vector<PixelFormat> V4L2M2MConverter::formats(PixelFormat input)
 
 	int ret = m2m_->output()->setFormat(&v4l2Format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set format: " << strerror(-ret);
 		return {};
 	}
 
 	if (v4l2Format.fourcc != m2m_->output()->toV4L2PixelFormat(input)) {
-		LOG(Converter, Debug)
+		LOG(ConverterMD, Debug)
 			<< "Input format " << input << " not supported.";
 		return {};
 	}
@@ -276,7 +276,7 @@ SizeRange V4L2M2MConverter::sizes(const Size &input)
 
 	int ret = m2m_->output()->setFormat(&format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set format: " << strerror(-ret);
 		return {};
 	}
@@ -286,7 +286,7 @@ SizeRange V4L2M2MConverter::sizes(const Size &input)
 	format.size = { 1, 1 };
 	ret = m2m_->capture()->setFormat(&format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set format: " << strerror(-ret);
 		return {};
 	}
@@ -296,7 +296,7 @@ SizeRange V4L2M2MConverter::sizes(const Size &input)
 	format.size = { UINT_MAX, UINT_MAX };
 	ret = m2m_->capture()->setFormat(&format);
 	if (ret < 0) {
-		LOG(Converter, Error)
+		LOG(ConverterMD, Error)
 			<< "Failed to set format: " << strerror(-ret);
 		return {};
 	}
@@ -339,7 +339,7 @@ int V4L2M2MConverter::configure(const StreamConfiguration &inputCfg,
 		Stream &stream = streams_.emplace_back(this, i);
 
 		if (!stream.isValid()) {
-			LOG(Converter, Error)
+			LOG(ConverterMD, Error)
 				<< "Failed to create stream " << i;
 			ret = -EINVAL;
 			break;
@@ -448,6 +448,6 @@ static std::initializer_list<std::string> compatibles = {
 	"pxp",
 };
 
-REGISTER_CONVERTER("v4l2_m2m", V4L2M2MConverter, compatibles)
+REGISTER_CONVERTER_MD("v4l2_m2m", V4L2M2MConverter, compatibles)
 
 } /* namespace libcamera */

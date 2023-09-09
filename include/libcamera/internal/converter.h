@@ -2,6 +2,7 @@
 /*
  * Copyright (C) 2020, Laurent Pinchart
  * Copyright 2022 NXP
+ * Copyright 2023, Linaro Ltd
  *
  * converter.h - Generic format converter interface
  */
@@ -24,14 +25,13 @@
 namespace libcamera {
 
 class FrameBuffer;
-class MediaDevice;
 class PixelFormat;
 struct StreamConfiguration;
 
 class Converter
 {
 public:
-	Converter(MediaDevice *media);
+	Converter();
 	virtual ~Converter();
 
 	virtual int loadConfiguration(const std::string &filename) = 0;
@@ -57,52 +57,6 @@ public:
 
 	Signal<FrameBuffer *> inputBufferReady;
 	Signal<FrameBuffer *> outputBufferReady;
-
-	const std::string &deviceNode() const { return deviceNode_; }
-
-private:
-	std::string deviceNode_;
 };
-
-class ConverterFactoryBase
-{
-public:
-	ConverterFactoryBase(const std::string name, std::initializer_list<std::string> compatibles);
-	virtual ~ConverterFactoryBase() = default;
-
-	const std::vector<std::string> &compatibles() const { return compatibles_; }
-
-	static std::unique_ptr<Converter> create(MediaDevice *media);
-	static std::vector<ConverterFactoryBase *> &factories();
-	static std::vector<std::string> names();
-
-private:
-	LIBCAMERA_DISABLE_COPY_AND_MOVE(ConverterFactoryBase)
-
-	static void registerType(ConverterFactoryBase *factory);
-
-	virtual std::unique_ptr<Converter> createInstance(MediaDevice *media) const = 0;
-
-	std::string name_;
-	std::vector<std::string> compatibles_;
-};
-
-template<typename _Converter>
-class ConverterFactory : public ConverterFactoryBase
-{
-public:
-	ConverterFactory(const char *name, std::initializer_list<std::string> compatibles)
-		: ConverterFactoryBase(name, compatibles)
-	{
-	}
-
-	std::unique_ptr<Converter> createInstance(MediaDevice *media) const override
-	{
-		return std::make_unique<_Converter>(media);
-	}
-};
-
-#define REGISTER_CONVERTER(name, converter, compatibles) \
-	static ConverterFactory<converter> global_##converter##Factory(name, compatibles);
 
 } /* namespace libcamera */
