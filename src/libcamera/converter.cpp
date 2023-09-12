@@ -199,16 +199,18 @@ ConverterFactoryBase::ConverterFactoryBase(const std::string name, std::initiali
 
 /**
  * \fn ConverterFactoryBase::compatibles()
- * \return The names compatibles
+ * \return The compatibles
  */
 
 /**
- * \brief Create an instance of the converter corresponding to a named factory
- * \param[in] media Name of the factory
+ * \brief Create an instance of the converter corresponding to the media device
+ * \param[in] media the media device to create the converter for
  *
  * \return A unique pointer to a new instance of the converter subclass
- * corresponding to the named factory or one of its alias. Otherwise a null
- * pointer if no such factory exists
+ * corresponding to the media device. The converter is created by the factory
+ * the name or the alias of which equals to the media device driver name.
+ * If the media device driver name doesn't match anything a null pointer is
+ * returned.
  */
 std::unique_ptr<Converter> ConverterFactoryBase::create(MediaDevice *media)
 {
@@ -236,10 +238,11 @@ std::unique_ptr<Converter> ConverterFactoryBase::create(MediaDevice *media)
 }
 
 /**
- * \brief Add a converter class to the registry
+ * \brief Add a converter factory to the registry
  * \param[in] factory Factory to use to construct the converter class
  *
- * The caller is responsible to guarantee the uniqueness of the converter name.
+ * The caller is responsible to guarantee the uniqueness of the converter
+ * factory name.
  */
 void ConverterFactoryBase::registerType(ConverterFactoryBase *factory)
 {
