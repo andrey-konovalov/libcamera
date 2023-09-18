@@ -178,23 +178,29 @@ LOG_DEFINE_CATEGORY(SimplePipeline)
 
 class SimplePipelineHandler;
 
+enum class ConverterFlag {
+	NoFlag = 0,
+	MediaDevice = (1 << 0),
+};
+using ConverterFlags = Flags<ConverterFlag>;
+
 struct SimplePipelineInfo {
 	const char *driver;
 	/*
 	 * Each converter in the list contains the name
 	 * and the number of streams it supports.
 	 */
-	std::vector<std::pair<const char *, unsigned int>> converters;
+	std::vector<std::tuple<ConverterFlags, const char *, unsigned int>> converters;
 };
 
 namespace {
 
 static const SimplePipelineInfo supportedDevices[] = {
 	{ "dcmipp", {} },
-	{ "imx7-csi", { { "pxp", 1 } } },
+	{ "imx7-csi", { { ConverterFlag::MediaDevice, "pxp", 1 } } },
 	{ "j721e-csi2rx", {} },
 	{ "mxc-isi", {} },
-	{ "qcom-camss", {} },
+	{ "qcom-camss", { { ConverterFlag::NoFlag, "linaro-sw-converter", 1 } } },
 	{ "sun6i-csi", {} },
 };
 
@@ -330,6 +336,7 @@ public:
 
 	V4L2VideoDevice *video(const MediaEntity *entity);
 	V4L2Subdevice *subdev(const MediaEntity *entity);
+	const char *converterName() { return converterName_; }
 	MediaDevice *converter() { return converter_; }
 
 protected:
@@ -358,6 +365,7 @@ private:
 	MediaDevice *media_;
 	std::map<const MediaEntity *, EntityData> entities_;
 
+	const char *converterName_;
 	MediaDevice *converter_;
 };
 
@@ -497,7 +505,7 @@ int SimpleCameraData::init()
 	/* Open the converter, if any. */
 	MediaDevice *converter = pipe->converter();
 	if (converter) {
-		converter_ = ConverterFactoryBase::create(converter);
+		converter_ = ConverterFactoryBase::create(std::string(pipe->converterName()), converter);
 		if (!converter_) {
 			LOG(SimplePipeline, Warning)
 				<< "Failed to create converter, disabling format conversion";
@@ -1409,10 +1417,17 @@ bool SimplePipelineHandler::match(DeviceEnumerator *enumerator)
 	if (!media_)
 		return false;
 
-	for (const auto &[name, streams] : info->converters) {
-		DeviceMatch converterMatch(name);
-		converter_ = acquireMediaDevice(enumerator, converterMatch);
-		if (converter_) {
+	for (const auto &[flags, name, streams] : info->converters) {
+		if (flags & ConverterFlag::MediaDevice) {
+			DeviceMatch converterMatch(name);
+			converter_ = acquireMediaDevice(enumerator, converterMatch);
+			if (converter_) {
+				converterName_ = name;
+				numStreams = streams;
+				break;
+			}
+		} else {
+			converterName_ = name;
 			numStreams = streams;
 			break;
 		}
