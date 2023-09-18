@@ -409,4 +409,8 @@ void SwConverter::Isp::debayer(uint8_t *dst, const uint8_t *src)
 			      << " (minDenom = " << minDenom << ")";
 }
 
+static std::initializer_list<std::string> compatibles = {};
+
+REGISTER_CONVERTER("linaro-sw-converter", SwConverter, compatibles)
+
 } /* namespace libcamera */

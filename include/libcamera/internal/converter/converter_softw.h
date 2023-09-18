@@ -20,6 +20,7 @@
 namespace libcamera {
 
 class FrameBuffer;
+class MediaDevice;
 class Size;
 class SizeRange;
 struct StreamConfiguration;
@@ -28,6 +29,7 @@ class SwConverter : public Converter
 {
 public:
 	SwConverter() : Converter() {}
+	SwConverter([[maybe_unused]] MediaDevice *media) : Converter() {}
 
 	int loadConfiguration([[maybe_unused]] const std::string &filename) { return 0; }
 	bool isValid() const { return true; }
