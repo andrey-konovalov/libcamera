@@ -504,8 +504,10 @@ int SimpleCameraData::init()
 
 	/* Open the converter, if any. */
 	MediaDevice *converter = pipe->converter();
-	if (converter) {
-		converter_ = ConverterFactoryBase::create(std::string(pipe->converterName()), converter);
+	const char *converterName = pipe->converterName();
+	if (converterName) {
+		LOG(SimplePipeline, Info) << "Creating converter '" << converterName << "'";
+		converter_ = ConverterFactoryBase::create(std::string(converterName, converter);
 		if (!converter_) {
 			LOG(SimplePipeline, Warning)
 				<< "Failed to create converter, disabling format conversion";
