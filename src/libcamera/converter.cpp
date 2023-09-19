@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * Copyright 2022 NXP
+ * Copyright 2023 Linaro Ltd
  *
  * converter.cpp - Generic format converter interface
  */
@@ -36,13 +37,16 @@ LOG_DEFINE_CATEGORY(Converter)
 
 /**
  * \brief Construct a Converter instance
- * \param[in] media The media device implementing the converter
+ * \param[in] media The media device implementing the converter (optional)
  *
  * This searches for the entity implementing the data streaming function in the
  * media graph entities and use its device node as the converter device node.
  */
 Converter::Converter(MediaDevice *media)
 {
+	if (!media)
+		return;
+
 	const std::vector<MediaEntity *> &entities = media->entities();
 	auto it = std::find_if(entities.begin(), entities.end(),
 			       [](MediaEntity *entity) {
@@ -160,7 +164,8 @@ Converter::~Converter()
 /**
  * \fn Converter::deviceNode()
  * \brief The converter device node attribute accessor
- * \return The converter device node string
+ * \return The converter device node string. If there is no device node for
+ * the converter returns an empty string.
  */
 
 /**
@@ -201,32 +206,37 @@ ConverterFactoryBase::ConverterFactoryBase(const std::string name, std::initiali
  */
 
 /**
- * \brief Create an instance of the converter corresponding to the media device
- * \param[in] media The media device to create the converter for
+ * \brief Create an instance of the converter corresponding to the converter
+ * name
+ * \param[in] name The name of the converter to create
+ * \param[in] media The media device to create the converter for (optional)
  *
- * \return A unique pointer to a new instance of the converter subclass
- * corresponding to the media device. The converter is created by matching
- * the factory name or any of its compatible aliases with the media device
- * driver name.
- * If the media device driver name doesn't match anything a null pointer is
- * returned.
+ * The converter \a name must match the name of the converter factory, or one
+ * of its compatibles. For media device based converters the converter \a name
+ * is the media device driver name.
+ *
+ * \return A unique pointer to a new instance of the converter subclass.
+ * The converter is created by matching the factory name or any of its
+ * compatible aliases with the converter name.
+ *
+ * If the converter name doesn't match anything a null pointer is returned.
  */
-std::unique_ptr<Converter> ConverterFactoryBase::create(MediaDevice *media)
+std::unique_ptr<Converter> ConverterFactoryBase::create(std::string name, MediaDevice *media)
 {
 	const std::vector<ConverterFactoryBase *> &factories =
 		ConverterFactoryBase::factories();
 
 	for (const ConverterFactoryBase *factory : factories) {
 		const std::vector<std::string> &compatibles = factory->compatibles();
-		auto it = std::find(compatibles.begin(), compatibles.end(), media->driver());
+		auto it = std::find(compatibles.begin(), compatibles.end(), name);
 
-		if (it == compatibles.end() && media->driver() != factory->name_)
+		if (it == compatibles.end() && name != factory->name_)
 			continue;
 
 		LOG(Converter, Debug)
 			<< "Creating converter from "
 			<< factory->name_ << " factory with "
-			<< (it == compatibles.end() ? "no" : media->driver()) << " alias.";
+			<< (it == compatibles.end() ? "no" : name) << " alias.";
 
 		std::unique_ptr<Converter> converter = factory->createInstance(media);
 		if (converter->isValid())
@@ -317,7 +327,7 @@ std::vector<ConverterFactoryBase *> &ConverterFactoryBase::factories()
 /**
  * \fn ConverterFactory::createInstance() const
  * \brief Create an instance of the Converter corresponding to the factory
- * \param[in] media Media device pointer
+ * \param[in] media Media device pointer (optional)
  * \return A unique pointer to a newly constructed instance of the Converter
  * subclass corresponding to the factory
  */
